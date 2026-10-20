@@ -95,7 +95,8 @@ public final class SidebarPanel extends JPanel implements ReaderView, Disposable
             case NOT_FOUND: key = "status.notfound"; break;
             default: key = "status.error";
         }
-        reader.showStatus(ReaderMessages.text(key)); rebuildActions();
+        reader.showStatus(result.getStatus() == LoadStatus.ERROR && !result.getMessage().isEmpty()
+                ? result.getMessage() : ReaderMessages.text(key)); rebuildActions();
     }
     @Override public void updateNavigation(boolean hasPrevious, boolean hasNext) {
         previous = hasPrevious; next = hasNext; rebuildActions();
@@ -121,11 +122,11 @@ public final class SidebarPanel extends JPanel implements ReaderView, Disposable
                 @Override public void update(@NotNull AnActionEvent e) { e.getPresentation().setEnabled(next); }
             });
             if (failureStatus != null) actions.add(action("retry", AllIcons.Actions.Refresh, controller::retry));
-            if (failureStatus == LoadStatus.NEEDS_LOGIN) actions.add(action("login", AllIcons.General.User, this::login));
+            if (failureStatus == LoadStatus.NEEDS_LOGIN) actions.add(loginAction(true));
         } else {
             actions.add(action("banks", AllIcons.Scope.ChangedFilesAll, controller::showBanks));
             actions.add(action("questions", AllIcons.Scope.ChangedFiles, () -> controller.showQuestions(null)));
-            actions.add(action("login", AllIcons.General.User, this::login));
+            actions.add(loginAction(false));
         }
         DefaultActionGroup more = new DefaultActionGroup(ReaderMessages.text("more"), true);
         more.getTemplatePresentation().setIcon(AllIcons.General.GearPlain);
@@ -139,7 +140,7 @@ public final class SidebarPanel extends JPanel implements ReaderView, Disposable
         more.add(action("dock.left", null, () -> window.setAnchor(ToolWindowAnchor.LEFT, null)));
         more.add(action("dock.right", null, () -> window.setAnchor(ToolWindowAnchor.RIGHT, null)));
         more.add(action("dock.bottom", null, () -> window.setAnchor(ToolWindowAnchor.BOTTOM, null)));
-        more.addSeparator(); more.add(action("login", IconConstant.LOGIN, this::login));
+        more.addSeparator(); more.add(loginAction(failureStatus == LoadStatus.NEEDS_LOGIN && detail));
         more.add(new LogoutAction(ReaderMessages.text("logout"), IconConstant.LOGOUT, new DefaultActionGroup()) {
             @Override public void update(@NotNull AnActionEvent e) {
                 String cookie = GlobalState.getInstance().getSavedCookie();
@@ -148,7 +149,13 @@ public final class SidebarPanel extends JPanel implements ReaderView, Disposable
         });
         actions.add(more); revalidate(); repaint();
     }
-    private void login() { new LoginPanel(project).showAndGet(); }
+    private AnAction loginAction(boolean forceLogin) {
+        return new ReaderLoginAction(IconConstant.LOGIN, () -> {
+            GlobalState state = GlobalState.getInstance();
+            return state.getSavedUser() != null && state.getSavedUser().getId() != null
+                    && state.getSavedCookie() != null && !state.getSavedCookie().isEmpty();
+        }, () -> new LoginPanel(project).showAndGet(), forceLogin);
+    }
     private AnAction action(String key, Icon icon, Runnable task) {
         return new AnAction(ReaderMessages.text(key), ReaderMessages.text(key), icon) {
             @Override public void actionPerformed(@NotNull AnActionEvent e) { task.run(); }

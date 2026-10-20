@@ -1,3 +1,5 @@
+> 2026-10-20: The 0.5.7 follow-up corrects the detail query contract and login presentation. See [current repair evidence](login-detail-fix-validation.md); historical 0.5.6 package and API limitations below describe the original build.
+
 # 侧栏 Markdown 阅读器：实现与验证记录
 
 日期：2026-10-20。实现仓库：`E:\01-Java\mianshiya-plugin`；分支：`codex/sidebar-markdown-reader`；上游基线：`98d5a90901ba7b78c2fed8923b270e284db3a48d`。

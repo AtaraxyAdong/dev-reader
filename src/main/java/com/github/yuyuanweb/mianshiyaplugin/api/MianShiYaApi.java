@@ -58,7 +58,7 @@ public interface MianShiYaApi {
      * The path is present in the currently served public JavaScript bundle.
      */
     @GET("question/get/vo")
-    Call<BaseResponse<QuestionDetailResponse>> getReaderQuestionDetail(@Query("id") long questionId);
+    Call<BaseResponse<QuestionDetailResponse>> getReaderQuestionDetail(@Query("questionId") long questionId);
 
 
     /**

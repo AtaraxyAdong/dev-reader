@@ -9,7 +9,8 @@ import com.github.yuyuanweb.mianshiyaplugin.utils.PanelUtil;
 import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.diagnostic.Logger;
-import lombok.extern.slf4j.Slf4j;
+import com.github.yuyuanweb.mianshiyaplugin.model.common.BaseResponse;
+import retrofit2.Response;
 import org.cef.network.CefCookieManager;
 
 import javax.swing.*;
@@ -20,7 +21,6 @@ import java.io.IOException;
  *
  * @author pine
  */
-@Slf4j
 public class CookieManager {
 
     private static final Logger logger = Logger.getInstance(CookieManager.class);
@@ -29,18 +29,25 @@ public class CookieManager {
      * 获取当前登录用户
      */
     public static User getLoginUser() {
-        User user = null;
         try {
-            user = ApiConfig.mianShiYaApi.getLoginUser().execute().body().getData();
+            Response<BaseResponse<User>> response = ApiConfig.mianShiYaApi.getLoginUser().execute();
+            BaseResponse<User> body = response.body();
+            if (!response.isSuccessful() || body == null || body.getCode() != 0) {
+                logger.warn("Login verification failed: HTTP " + response.code()
+                        + ", code " + (body == null ? "absent" : body.getCode()));
+                return null;
+            }
+            User user = body.getData();
+            return user != null && user.getId() != null ? user : null;
         } catch (IOException e) {
-            log.error("Failed to get login user", e);
-            // throw new RuntimeException(e);
+            logger.warn("Login verification failed: network");
+        } catch (RuntimeException e) {
+            logger.warn("Login verification failed: invalid response");
         }
-        return user;
+        return null;
     }
 
     public static void handleCookie(CefCookieManager cefCookieManager, String currentUrl, Runnable afterLogin) {
-        logger.warn("Starting handleCookie for URL: " + currentUrl);
 
         // 建议使用 visitUrlCookies 而不是 visitAllCookies，更加精准
         // 如果没有 currentUrl，还是可以用 visitAllCookies，但必须改 return 逻辑
@@ -48,8 +55,6 @@ public class CookieManager {
             String targetName = "SESSION";
             String name = cefCookie.name;
 
-            // 打印调试，看看现在有哪些 Cookie
-            logger.warn("Scanning cookie: " + name + " | value: " + cefCookie.value + " | path: " + cefCookie.path);
 
             // 如果名字不对，或者值为空，返回 true (继续找下一个)
             if (!targetName.equals(name) || StrUtil.isBlank(cefCookie.value)) {

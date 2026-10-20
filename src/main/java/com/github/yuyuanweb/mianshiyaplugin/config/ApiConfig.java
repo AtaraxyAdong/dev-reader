@@ -37,7 +37,6 @@ public class ApiConfig {
                 .build();
         OkHttpClient readerClient = new OkHttpClient.Builder()
                 .addInterceptor(new HeaderInterceptor())
-                .addInterceptor(new ResponseInterceptor(false))
                 .build();
         String mianShiYaBaseUrl = CommonConstant.API;
         Retrofit retrofit = new Retrofit.Builder()

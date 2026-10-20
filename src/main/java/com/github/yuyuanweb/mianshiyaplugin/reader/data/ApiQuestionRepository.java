@@ -13,7 +13,9 @@ import com.github.yuyuanweb.mianshiyaplugin.reader.model.ReaderModels.PartStatus
 import com.github.yuyuanweb.mianshiyaplugin.reader.model.ReaderModels.QuestionDocument;
 import com.github.yuyuanweb.mianshiyaplugin.reader.model.ReaderModels.QuestionLoadResult;
 import com.github.yuyuanweb.mianshiyaplugin.reader.model.ReaderModels.SourceFormat;
-import retrofit2.Call;
+import com.google.gson.JsonParseException;
+import com.google.gson.stream.MalformedJsonException;
+import java.io.EOFException;
 import retrofit2.Response;
 
 import java.io.IOException;
@@ -51,20 +53,25 @@ public final class ApiQuestionRepository implements QuestionRepository {
             }
             if (http.code() == 404) return QuestionLoadResult.failure(LoadStatus.NOT_FOUND, "题目不存在");
             if (!http.isSuccessful() || http.body() == null) {
-                return QuestionLoadResult.failure(LoadStatus.ERROR, "题目加载失败");
+                return QuestionLoadResult.failure(LoadStatus.ERROR, "题目请求失败（HTTP " + http.code() + "），请重试。");
             }
             BaseResponse<QuestionDetailResponse> body = http.body();
             LoadStatus codeStatus = statusForApplicationCode(body.getCode());
             if (codeStatus != null) return QuestionLoadResult.failure(codeStatus,
                     codeStatus == LoadStatus.NEEDS_LOGIN ? "登录状态已失效" : "无权查看此题");
-            if (body.getCode() != 0) return QuestionLoadResult.failure(LoadStatus.ERROR, "题目加载失败");
+            if (body.getCode() != 0) return QuestionLoadResult.failure(LoadStatus.ERROR,
+                    "题目接口返回错误（业务码 " + body.getCode() + "），请重试。");
             QuestionDetailResponse question = body.getData();
             if (question == null || question.getId() == null || question.getId() != questionId) {
                 return QuestionLoadResult.failure(LoadStatus.NOT_FOUND, "题目不存在");
             }
             return QuestionLoadResult.ready(toDocument(question, questionId));
-        } catch (IOException | RuntimeException e) {
-            return QuestionLoadResult.failure(LoadStatus.ERROR, "题目加载失败，请重试");
+        } catch (JsonParseException | IllegalStateException | MalformedJsonException | EOFException e) {
+            return QuestionLoadResult.failure(LoadStatus.ERROR, "题目数据解析失败，请重试。");
+        } catch (IOException e) {
+            return QuestionLoadResult.failure(LoadStatus.ERROR, "题目网络请求失败，请重试。");
+        } catch (RuntimeException e) {
+            return QuestionLoadResult.failure(LoadStatus.ERROR, "题目加载失败，请重试。");
         }
     }
 
