@@ -16,8 +16,9 @@ import com.github.yuyuanweb.mianshiyaplugin.model.enums.NeedVipEnum;
 import com.github.yuyuanweb.mianshiyaplugin.model.enums.QuestionDifficultyEnum;
 import com.github.yuyuanweb.mianshiyaplugin.model.response.Question;
 import com.github.yuyuanweb.mianshiyaplugin.model.response.QuestionBank;
-import com.github.yuyuanweb.mianshiyaplugin.utils.ContentUtil;
-import com.github.yuyuanweb.mianshiyaplugin.utils.FileUtils;
+import com.github.yuyuanweb.mianshiyaplugin.reader.SidebarController;
+import com.github.yuyuanweb.mianshiyaplugin.reader.model.ReaderModels.NavigationContext;
+import com.github.yuyuanweb.mianshiyaplugin.reader.model.ReaderModels.QuestionSelection;
 import com.github.yuyuanweb.mianshiyaplugin.utils.PanelUtil;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.ui.ComboBox;
@@ -40,11 +41,11 @@ import java.io.IOException;
 import java.util.*;
 import java.util.List;
 import java.util.function.Supplier;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import static com.github.yuyuanweb.mianshiyaplugin.config.ApiConfig.mianShiYaApi;
+import static com.github.yuyuanweb.mianshiyaplugin.config.ApiConfig.readerMianShiYaApi;
 import static com.github.yuyuanweb.mianshiyaplugin.constant.SearchComboBoxConstant.*;
-import static com.github.yuyuanweb.mianshiyaplugin.constant.SearchConstant.QUESTION_BANK_NULL_ID;
 
 /**
  * @author pine
@@ -64,7 +65,15 @@ public class QuestionListManager {
     int difficultyLastSelectedIndex = 2;
     int needVipLastSelectedIndex = 3;
 
-    private boolean firstResize = true;
+    private long searchGeneration;
+    private boolean disposed;
+    private JPanel panel;
+    private Component listContent;
+    private JBTable listTable;
+    private JBScrollPane tableScrollPane;
+    private Project project;
+    private Consumer<QuestionSelection> onQuestionOpen;
+    private Long loadedNavigationBankId;
 
     private final List<ComboBoxItem> difficultyComboBoxItems = Arrays.stream(QuestionDifficultyEnum.values())
             .map(item -> new ComboBoxItem(String.valueOf(item.getValue()), item.getText()))
@@ -79,23 +88,30 @@ public class QuestionListManager {
     }
 
     public void addQuestionTab(Long questionBankId, Project project) {
-        questionQueryRequest.setQuestionBankId(questionBankId);
+        SidebarController.getInstance(project).showQuestions(questionBankId);
+    }
 
-        // 新建 tab 页
-        JBPanel<?> newTabPanel = new JBPanel<>(new BorderLayout());
-        ContentUtil.createContent(newTabPanel, TextConstant.QUESTION, false, project);
+    /** Creates the persistent, project-scoped question list component. */
+    public JComponent createPanel(Long bankId, Project project, Consumer<QuestionSelection> onQuestionOpen) {
+        this.project = project;
+        this.onQuestionOpen = onQuestionOpen;
+        this.questionQueryRequest.setQuestionBankId(bankId);
+        this.questionQueryRequest.setCurrent(PageConstant.FIRST_PAGE);
+        this.currentPage[0] = PageConstant.FIRST_PAGE;
+        this.panel = new JBPanel<>(new BorderLayout());
+        panel.add(getSearchPanel(), BorderLayout.NORTH);
+        paginationPanel = new JBPanel<>(new FlowLayout(FlowLayout.CENTER, 4, 2));
+        panel.add(paginationPanel, BorderLayout.SOUTH);
+        loadDataPanel();
+        return panel;
+    }
 
-        // 搜索条
-        JPanel searchPanel = this.getSearchPanel();
-        newTabPanel.add(searchPanel, BorderLayout.NORTH);
-
-        // 数据表格
-        this.getDataPanel(project, newTabPanel);
-
-        // 分页条
-        paginationPanel = new JBPanel<>(new GridBagLayout());
-        newTabPanel.add(paginationPanel, BorderLayout.SOUTH);
-
+    /** Invalidates callbacks when this retained list is discarded or its project closes. */
+    public void dispose() {
+        disposed = true;
+        searchGeneration++;
+        panel = null;
+        tableModel = null;
     }
 
     /**
@@ -182,7 +198,8 @@ public class QuestionListManager {
             queryRequest.setCurrent(1);
             queryRequest.setPageSize(1000);
             try {
-                BaseResponse<Page<QuestionBank>> baseResponse = mianShiYaApi.listQuestionBankVoByPage(queryRequest).execute().body();
+                BaseResponse<Page<QuestionBank>> baseResponse = readerMianShiYaApi.listQuestionBankVoByPage(queryRequest).execute().body();
+                if (baseResponse == null || baseResponse.getData() == null || baseResponse.getData().getRecords() == null) return Collections.emptyList();
                 return baseResponse.getData().getRecords().stream()
                         .map(questionBank -> new ComboBoxItem(questionBank.getId().toString(), questionBank.getTitle()))
                         .collect(Collectors.toList());
@@ -197,7 +214,9 @@ public class QuestionListManager {
             TagCategoryQueryRequest queryRequest = new TagCategoryQueryRequest();
             queryRequest.setCurrent(1);
             try {
-                return mianShiYaApi.listTagCategory(queryRequest).execute().body().getData().stream()
+                BaseResponse<List<com.github.yuyuanweb.mianshiyaplugin.model.response.TagGroup>> response = readerMianShiYaApi.listTagCategory(queryRequest).execute().body();
+                if (response == null || response.getData() == null) return Collections.emptyList();
+                return response.getData().stream()
                         .flatMap(tagGroup -> tagGroup.getTagList().stream().map(tag -> new ComboBoxItem(tag, tag)).collect(Collectors.toList()).stream())
                         .collect(Collectors.toList());
             } catch (IOException e) {
@@ -222,8 +241,12 @@ public class QuestionListManager {
     private JComboBox<ComboBoxItem> createCustomFilterBox(Supplier<List<ComboBoxItem>> supplier, int lastSelectedIndex, String fieldName, String placeHolder) {
         ComboBox<ComboBoxItem> comboBox = new ComboBox<>();
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            List<ComboBoxItem> comboBoxItems = supplier.get();
+            List<ComboBoxItem> loadedItems;
+            try { loadedItems = supplier.get(); } catch (RuntimeException ex) { loadedItems = Collections.emptyList(); }
+            final List<ComboBoxItem> comboBoxItems = loadedItems;
+            if (disposed || project == null || project.isDisposed()) return;
             ApplicationManager.getApplication().invokeLater(() -> {
+                if (disposed || project == null || project.isDisposed()) return;
                 comboBox.setModel(new DefaultComboBoxModel<>(ArrayUtil.toArray(comboBoxItems, ComboBoxItem.class)));
                 Long questionBankId = questionQueryRequest.getQuestionBankId();
                 if (QUESTION_BANK_ID_FILE_NAME.equals(fieldName) && comboBoxLastSelectedItem[questionBankLastSelectedIndex] == initSelectedIndex && questionBankId != null) {
@@ -339,10 +362,23 @@ public class QuestionListManager {
     /**
      * 数据表格
      */
-    private void getDataPanel(Project project, JBPanel<?> newTabPanel) {
+    private void loadDataPanel() {
+        final long generation = ++searchGeneration;
+        final QuestionQueryRequest request = copyQuery(questionQueryRequest);
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            BaseResponse<Page<Question>> data = this.fetchQuestionList(questionQueryRequest);
+            BaseResponse<Page<Question>> data = null;
+            RuntimeException failure = null;
+            try { data = this.fetchQuestionList(request); }
+            catch (RuntimeException ex) { failure = ex; }
+            final BaseResponse<Page<Question>> result = data;
+            final RuntimeException error = failure;
             ApplicationManager.getApplication().invokeLater(() -> {
+                if (!isCurrent(generation)) return;
+                if (error != null || result == null || result.getData() == null || result.getData().getRecords() == null) {
+                    showInlineError(error == null ? "题目列表暂不可用" : "题目列表加载失败，请重试");
+                    return;
+                }
+                loadedNavigationBankId = navigationBankId(request);
                 // 创建表格数据模型
                 tableModel = new MTabModel();
                 tableModel.addColumn("id");
@@ -352,7 +388,7 @@ public class QuestionListManager {
                 tableModel.addColumn("number");
 
                 // 将数据添加到表格模型
-                for (Question row : data.getData().getRecords()) {
+                for (Question row : result.getData().getRecords()) {
                     DifficultyEnum difficultyEnum = DifficultyEnum.getEnumByValue(row.getDifficulty());
                     String difficulty = null;
                     if (difficultyEnum != null) {
@@ -364,14 +400,13 @@ public class QuestionListManager {
                 // 创建表格
                 JBTable table = PanelUtil.createTablePanel(tableModel, (tempTable, mouseEvent) -> {
                     int selectedRow = tempTable.getSelectedRow();
+                    if (selectedRow < 0 || onQuestionOpen == null || disposed || project == null || project.isDisposed()) return;
                     Long questionId = Long.valueOf((String) tempTable.getValueAt(selectedRow, 0));
-                    String questionTitle = (String) tempTable.getValueAt(selectedRow, 1);
-                    Long questionNum = (Long) tempTable.getValueAt(selectedRow, 4);
-                    Long questionBankId = questionQueryRequest.getQuestionBankId();
-                    if (questionBankId == null) {
-                        questionBankId = QUESTION_BANK_NULL_ID;
-                    }
-                    FileUtils.openNewEditorTab(project, questionId, questionBankId, questionNum, questionTitle);
+                    String questionTitle = Objects.toString(tempTable.getValueAt(selectedRow, 1), "");
+                    List<Long> ids = new ArrayList<>();
+                    for (int row = 0; row < tempTable.getRowCount(); row++) ids.add(Long.valueOf((String) tempTable.getValueAt(row, 0)));
+                    Long bankId = loadedNavigationBankId;
+                    onQuestionOpen.accept(new QuestionSelection(questionId, questionTitle, new NavigationContext(bankId, ids, questionId)));
                 }, 3);
 
                 // 设置列宽为0，使列存在但不可见
@@ -385,38 +420,58 @@ public class QuestionListManager {
 
                 // 添加监听器，监听 table 大小变化
                 table.addComponentListener(new ComponentAdapter() {
-                    @Override
-                    public void componentResized(ComponentEvent e) {
-                        if (!firstResize) {
-                            return;
+                    @Override public void componentResized(ComponentEvent e) {
+                        int width = Math.max(0, table.getParent() == null ? table.getWidth() : table.getParent().getWidth());
+                        if (width < 380) {
+                            columnModel.getColumn(1).setPreferredWidth(Math.max(150, width - 24));
+                            columnModel.getColumn(2).setMinWidth(0); columnModel.getColumn(2).setMaxWidth(0); columnModel.getColumn(2).setPreferredWidth(0);
+                            columnModel.getColumn(3).setMinWidth(0); columnModel.getColumn(3).setMaxWidth(0); columnModel.getColumn(3).setPreferredWidth(0);
+                        } else {
+                            columnModel.getColumn(2).setMinWidth(45); columnModel.getColumn(2).setMaxWidth(Integer.MAX_VALUE);
+                            columnModel.getColumn(3).setMinWidth(70); columnModel.getColumn(3).setMaxWidth(Integer.MAX_VALUE);
+                            columnModel.getColumn(1).setPreferredWidth((int) (width * .58));
+                            columnModel.getColumn(2).setPreferredWidth((int) (width * .14));
+                            columnModel.getColumn(3).setPreferredWidth((int) (width * .28));
                         }
-                        firstResize = false;
-                        // 获取当前宽度
-                        int width = table.getWidth();
-
-                        // 根据 Tool Window 的宽度调整列宽比例
-                        // 标题占 60%
-                        columnModel.getColumn(1).setPreferredWidth((int) (width * 0.60));
-                        // 难度占 10%
-                        columnModel.getColumn(2).setPreferredWidth((int) (width * 0.10));
-                        // 标签占 30%
-                        columnModel.getColumn(3).setPreferredWidth((int) (width * 0.30));
-
-                        // 重新布局表格
+                        table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
                         table.revalidate();
                     }
                 });
 
                 // 将表格添加到滚动面板
                 JBScrollPane scrollPane = new JBScrollPane(table);
+                listTable = table;
+                tableScrollPane = scrollPane;
                 // 确保表格充满视口
                 scrollPane.setViewportView(table);
-                newTabPanel.add(scrollPane, BorderLayout.CENTER);
+                if (listContent != null) panel.remove(listContent);
+                listContent = scrollPane;
+                panel.add(scrollPane, BorderLayout.CENTER);
 
                 // 更新分页条
-                PanelUtil.updatePaginationPanel(paginationPanel, data.getData().getTotal(), currentPage, this::loadPage);
+                PanelUtil.updatePaginationPanel(paginationPanel, result.getData().getTotal(), currentPage, this::loadPage);
+                panel.revalidate(); panel.repaint();
             });
         });
+    }
+
+    private boolean isCurrent(long generation) {
+        return !disposed && generation == searchGeneration && project != null && !project.isDisposed() && panel != null;
+    }
+
+    private void showInlineError(String message) {
+        if (listContent != null) panel.remove(listContent);
+        JBPanel<?> errorPanel = new JBPanel<>(new FlowLayout(FlowLayout.CENTER));
+        errorPanel.add(new JBLabel(message));
+        JButton retry = new JButton("重试");
+        retry.addActionListener(e -> loadDataPanel());
+        errorPanel.add(retry);
+        JButton login = new JButton(TextConstant.LOGIN);
+        login.addActionListener(e -> new LoginPanel(project).show());
+        errorPanel.add(login);
+        listContent = errorPanel;
+        panel.add(errorPanel, BorderLayout.CENTER);
+        panel.revalidate(); panel.repaint();
     }
 
     public BaseResponse<Page<Question>> fetchQuestionList(QuestionQueryRequest queryRequest) {
@@ -428,12 +483,12 @@ public class QuestionListManager {
         try {
             if (StrUtil.isNotBlank(queryRequest.getTitle())) {
                 // 如果 title 不为空，使用搜索逻辑
-                return mianShiYaApi.searchQuestionList(queryRequest).execute().body();
+                return readerMianShiYaApi.searchQuestionList(queryRequest).execute().body();
             } else if (ObjUtil.isNotEmpty(queryRequest.getQuestionBankId())) {
                 // 如果 questionBankId 不为空，从题库中查找
-                return mianShiYaApi.listQuestionByQuestionBank(queryRequest).execute().body();
+                return readerMianShiYaApi.listQuestionByQuestionBank(queryRequest).execute().body();
             } else {
-                return mianShiYaApi.getQuestionList(queryRequest).execute().body();
+                return readerMianShiYaApi.getQuestionList(queryRequest).execute().body();
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -452,11 +507,24 @@ public class QuestionListManager {
         if (tableModel == null) {
             return;
         }
+        final long generation = ++searchGeneration;
+        final QuestionQueryRequest request = copyQuery(queryRequest);
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
-            BaseResponse<Page<Question>> response = this.fetchQuestionList(queryRequest);
+            BaseResponse<Page<Question>> response = null;
+            RuntimeException failure = null;
+            try { response = this.fetchQuestionList(request); }
+            catch (RuntimeException ex) { failure = ex; }
+            final BaseResponse<Page<Question>> result = response;
+            final RuntimeException error = failure;
             ApplicationManager.getApplication().invokeLater(() -> {
+                if (!isCurrent(generation)) return;
+                if (error != null || result == null || result.getData() == null || result.getData().getRecords() == null) {
+                    showInlineError("题目列表加载失败，请重试");
+                    return;
+                }
+                loadedNavigationBankId = navigationBankId(request);
                 tableModel.setRowCount(0);
-                Page<Question> data = response.getData();
+                Page<Question> data = result.getData();
 
                 // 添加新数据到表格模型
                 for (Question row : data.getRecords()) {
@@ -470,9 +538,34 @@ public class QuestionListManager {
 
                 // 重新渲染表格
                 tableModel.fireTableDataChanged();
+                if (listContent != tableScrollPane && tableScrollPane != null) {
+                    if (listContent != null) panel.remove(listContent);
+                    listContent = tableScrollPane;
+                    panel.add(tableScrollPane, BorderLayout.CENTER);
+                }
                 PanelUtil.updatePaginationPanel(paginationPanel, data.getTotal(), currentPage, this::loadPage);
+                if (listTable != null) listTable.revalidate();
+                panel.revalidate(); panel.repaint();
             });
         });
     }
 
+    /** Only an unfiltered bank browser may expand navigation to the entire bank. */
+    public static Long navigationBankId(QuestionQueryRequest request) {
+        if (StrUtil.isNotBlank(request.getTitle()) || (request.getTagList() != null && !request.getTagList().isEmpty())
+                || request.getDifficulty() != null || request.getNeedVip() != null) return null;
+        return request.getQuestionBankId();
+    }
+
+    private static QuestionQueryRequest copyQuery(QuestionQueryRequest source) {
+        QuestionQueryRequest copy = new QuestionQueryRequest();
+        copy.setTitle(source.getTitle());
+        copy.setTagList(source.getTagList() == null ? null : new ArrayList<>(source.getTagList()));
+        copy.setQuestionBankId(source.getQuestionBankId());
+        copy.setNeedVip(source.getNeedVip());
+        copy.setDifficulty(source.getDifficulty());
+        copy.setCurrent(source.getCurrent());
+        copy.setPageSize(source.getPageSize());
+        return copy;
+    }
 }

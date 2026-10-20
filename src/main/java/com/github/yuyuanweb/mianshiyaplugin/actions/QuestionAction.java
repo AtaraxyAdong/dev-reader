@@ -1,6 +1,6 @@
 package com.github.yuyuanweb.mianshiyaplugin.actions;
 
-import com.github.yuyuanweb.mianshiyaplugin.view.QuestionListManager;
+import com.github.yuyuanweb.mianshiyaplugin.reader.SidebarController;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import org.jetbrains.annotations.NotNull;
@@ -21,8 +21,9 @@ public class QuestionAction extends AnAction {
 
     @Override
     public void actionPerformed(@NotNull AnActionEvent anActionEvent) {
-        QuestionListManager questionListManager = new QuestionListManager();
-        questionListManager.addQuestionTab(null, anActionEvent.getProject());
+        com.intellij.openapi.project.Project project = anActionEvent.getProject();
+        if (project == null || project.isDisposed()) return;
+        SidebarController.getInstance(project).showQuestions(null);
     }
 
 }

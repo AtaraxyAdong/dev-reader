@@ -14,6 +14,7 @@ import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.ProjectManager;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBLabel;
@@ -133,6 +134,7 @@ public class PanelUtil {
     }
 
     public static void updatePaginationPanel(JBPanel<?> paginationPanel, long total, int[] currentPage, BiConsumer<Integer, Integer> loadPage) {
+        if (paginationPanel == null || currentPage == null || loadPage == null) return;
         paginationPanel.removeAll();
         // int pageSize = Objects.requireNonNull(GlobalState.getInstance().getState()).pageSize;
         long totalPage = (long) Math.ceil((double) total / PAGE_SIZE);
@@ -159,12 +161,42 @@ public class PanelUtil {
             }
         });
 
+        Runnable adapt = () -> {
+            boolean narrow = paginationPanel.getWidth() > 0 && paginationPanel.getWidth() < 280;
+            prevButton.setText(narrow ? "‹" : "上一页");
+            nextButton.setText(narrow ? "›" : "下一页");
+            pageLabel.setText(narrow ? currentPage[0] + "/" + Math.max(1, totalPage) : "第 " + currentPage[0] + " / " + totalPage + " 页");
+        };
+        Object previousListener = paginationPanel.getClientProperty("paginationResizeListener");
+        if (previousListener instanceof java.awt.event.ComponentListener) paginationPanel.removeComponentListener((java.awt.event.ComponentListener) previousListener);
+        java.awt.event.ComponentListener resizeListener = new java.awt.event.ComponentAdapter() {
+            @Override public void componentResized(java.awt.event.ComponentEvent e) { adapt.run(); }
+        };
+        paginationPanel.putClientProperty("paginationResizeListener", resizeListener);
+        paginationPanel.addComponentListener(resizeListener);
+        adapt.run();
+
         paginationPanel.add(prevButton);
         paginationPanel.add(pageLabel);
         paginationPanel.add(nextButton);
 
         paginationPanel.revalidate();
         paginationPanel.repaint();
+    }
+
+    public static void showRetry(JBPanel<?> target, String message, Runnable retry, Project project) {
+        if (target == null) return;
+        target.removeAll();
+        target.setLayout(new FlowLayout(FlowLayout.CENTER, 4, 2));
+        target.add(new JBLabel(message == null ? "加载失败" : message));
+        JButton button = new JButton("重试");
+        button.addActionListener(e -> { if (retry != null) retry.run(); });
+        target.add(button);
+        JButton login = new JButton(TextConstant.LOGIN);
+        login.addActionListener(e -> new LoginPanel(project == null ? ProjectManager.getInstance().getDefaultProject() : project).show());
+        target.add(login);
+        target.revalidate();
+        target.repaint();
     }
 
     public static JBPanel<?> getNeedVipPanel() {

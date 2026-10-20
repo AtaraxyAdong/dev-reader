@@ -3,6 +3,9 @@ package com.github.yuyuanweb.mianshiyaplugin.utils;
 import com.intellij.openapi.editor.colors.EditorColorsManager;
 
 import java.awt.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import com.intellij.util.ui.UIUtil;
 
 /**
  * 主题工具类
@@ -10,6 +13,31 @@ import java.awt.*;
  * @author pine
  */
 public class ThemeUtil {
+
+    /** Read actual UI colors rather than inheriting a website's theme. */
+    public static Map<String, String> readerVariables() {
+        Map<String, String> values = new LinkedHashMap<>();
+        Color background = UIUtil.getPanelBackground();
+        Color foreground = UIUtil.getLabelForeground();
+        Font font = UIUtil.getLabelFont();
+        values.put("--reader-bg", hex(background));
+        values.put("--reader-fg", hex(foreground));
+        values.put("--reader-muted", hex(blend(foreground, background, .65)));
+        values.put("--reader-border", hex(blend(foreground, background, .18)));
+        values.put("--reader-code-bg", hex(blend(foreground, background, .045)));
+        values.put("--reader-link", hex(isDarkColor(background) ? new Color(120, 170, 235) : new Color(55, 105, 175)));
+        values.put("--reader-font", "'" + font.getFamily().replace("'", "").replace("\\", "") + "', sans-serif");
+        values.put("--reader-size", Math.max(12, font.getSize()) + "px");
+        return values;
+    }
+
+    private static Color blend(Color first, Color second, double amount) {
+        return new Color((int) (first.getRed() * amount + second.getRed() * (1 - amount)),
+                (int) (first.getGreen() * amount + second.getGreen() * (1 - amount)),
+                (int) (first.getBlue() * amount + second.getBlue() * (1 - amount)));
+    }
+
+    private static String hex(Color color) { return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue()); }
 
     private static final String DARK = "dark";
 

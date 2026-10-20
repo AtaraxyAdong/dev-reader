@@ -22,6 +22,8 @@ import java.util.Date;
 public class ApiConfig {
 
     public static MianShiYaApi mianShiYaApi;
+    /** API client for background reader requests; it reuses the saved session without interactive prompts or URL logging. */
+    public static MianShiYaApi readerMianShiYaApi;
 
     static {
         // 自定义 Gson 实例
@@ -33,6 +35,10 @@ public class ApiConfig {
                 .addInterceptor(new LogInterceptor())
                 .addInterceptor(new ResponseInterceptor())
                 .build();
+        OkHttpClient readerClient = new OkHttpClient.Builder()
+                .addInterceptor(new HeaderInterceptor())
+                .addInterceptor(new ResponseInterceptor(false))
+                .build();
         String mianShiYaBaseUrl = CommonConstant.API;
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(mianShiYaBaseUrl)
@@ -41,6 +47,12 @@ public class ApiConfig {
                 .build();
 
         mianShiYaApi = retrofit.create(MianShiYaApi.class);
+        Retrofit readerRetrofit = new Retrofit.Builder()
+                .baseUrl(mianShiYaBaseUrl)
+                .addConverterFactory(GsonConverterFactory.create(gson))
+                .client(readerClient)
+                .build();
+        readerMianShiYaApi = readerRetrofit.create(MianShiYaApi.class);
     }
 
 }

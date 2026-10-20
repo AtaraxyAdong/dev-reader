@@ -5,6 +5,7 @@ import com.github.yuyuanweb.mianshiyaplugin.model.common.Page;
 import com.github.yuyuanweb.mianshiyaplugin.model.common.PageRequest;
 import com.github.yuyuanweb.mianshiyaplugin.model.dto.*;
 import com.github.yuyuanweb.mianshiyaplugin.model.response.*;
+import com.github.yuyuanweb.mianshiyaplugin.reader.data.QuestionDetailResponse;
 import retrofit2.Call;
 import retrofit2.http.*;
 
@@ -51,6 +52,13 @@ public interface MianShiYaApi {
     Call<BaseResponse<Page<Question>>> listQuestionByQuestionBank(
             @Body QuestionQueryRequest queryRequest
     );
+
+    /**
+     * Fetch the question VO used by the public question page.
+     * The path is present in the currently served public JavaScript bundle.
+     */
+    @GET("question/get/vo")
+    Call<BaseResponse<QuestionDetailResponse>> getReaderQuestionDetail(@Query("id") long questionId);
 
 
     /**

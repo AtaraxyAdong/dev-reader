@@ -59,11 +59,12 @@
     ]]></change-notes>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow canCloseContents="true"
+        <toolWindow canCloseContents="false" anchor="right"
                     icon="/icons/favicon.svg"
                     factoryClass="com.github.yuyuanweb.mianshiyaplugin.toolWindow.MyToolWindowFactory" id="面试鸭">
         </toolWindow>
         <applicationService serviceImplementation="com.github.yuyuanweb.mianshiyaplugin.config.GlobalState"/>
+        <projectService serviceImplementation="com.github.yuyuanweb.mianshiyaplugin.reader.SidebarController"/>
 
         <fileEditorProvider implementation="com.github.yuyuanweb.mianshiyaplugin.file.provider.EditorProvider"/>
         <fileType name="msyQUESTION" extensions="msy;" fileNames=".msy" language="msyQUESTION"
@@ -77,6 +78,11 @@
                 implementation="com.github.yuyuanweb.mianshiyaplugin.file.provider.CustomTabTitleProvider"
                 order="last"/>
     </extensions>
+
+    <actions>
+        <action id="Mianshiya.ToggleReader" class="com.github.yuyuanweb.mianshiyaplugin.reader.ToggleReaderAction"
+                text="显示／隐藏阅读窗口" description="显示或隐藏面试鸭阅读工具窗口"/>
+    </actions>
 
     <applicationListeners>
         <listener class="com.github.yuyuanweb.mianshiyaplugin.listeners.ApplicationLifecycleListener"
