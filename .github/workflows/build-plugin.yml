@@ -1,0 +1,55 @@
+name: Build plugin ZIP
+
+on:
+  push:
+    branches:
+      - codex/sidebar-markdown-reader
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Test and package with JDK 17
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Check out the pushed commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Test, verify and build the plugin
+        run: .\gradlew.bat --no-daemon check verifyPlugin buildPlugin --console=plain '-Dfile.encoding=UTF-8'
+
+      - name: Upload the installable plugin ZIP
+        id: plugin
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Mianshiya-plugin-${{ github.sha }}
+          path: build/distributions/*.zip
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Write download and checksum summary
+        env:
+          ARTIFACT_URL: ${{ steps.plugin.outputs.artifact-url }}
+        run: |
+          "## Plugin package" >> $env:GITHUB_STEP_SUMMARY
+          "[Download artifact]($env:ARTIFACT_URL)" >> $env:GITHUB_STEP_SUMMARY
+          "Extract the downloaded artifact and install the inner plugin ZIP in IDEA." >> $env:GITHUB_STEP_SUMMARY
+          Get-ChildItem -LiteralPath 'build/distributions' -Filter '*.zip' | ForEach-Object {
+            $checksum = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
+            "- $($_.Name): $($_.Length) bytes; SHA-256: $checksum" >> $env:GITHUB_STEP_SUMMARY
+          }

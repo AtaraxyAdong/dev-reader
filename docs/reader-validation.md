@@ -69,3 +69,13 @@ Verifier 保留 3 项废弃／计划移除 API 警告：`JBCefJSQuery.create(JBC
 - 图片如依赖网站认证 Cookie，会显示失败链接；阅读浏览器不会共享或注入接口登录 Cookie。
 
 当前交付为已构建、通过自动检查的本地插件实现。完整上线验收仍需补齐上述真实账号和原生 IDE 检查。
+
+## GitHub Actions 云端打包
+
+向 `codex/sidebar-markdown-reader` 推送提交后，`Build plugin ZIP` 工作流自动运行。GitHub 托管的 Windows runner 配置 Temurin JDK 17，使用仓库的 Gradle Wrapper 执行 `check verifyPlugin buildPlugin`；本机无需安装 JDK，也不依赖 AdongStrix 私有的 `.superpowers` 目录。
+
+在仓库 **Actions → Build plugin ZIP → 对应提交的成功运行 → Artifacts** 下载 `Mianshiya-plugin-<commit SHA>`。下载后解压外层 artifact 压缩包，里面的 `Mianshiya-0.5.6.zip` 才是 **Install Plugin from Disk** 要选择的安装包。产物保留 14 天，运行摘要列出安装包 SHA-256。
+
+工作流仅由上述分支的 `push` 触发，不依赖默认分支中的手动运行入口。默认分支保留原样；如 GitHub 要求仓库所有者启用 fork 的 Actions，需先由所有者确认。工作流只有 `contents: read` 权限，不配置发布密钥，不发布 Release 或 Marketplace。
+
+云端打包不改变声明的 `213` 至 `252.*` 兼容范围。IDEA 2025.3.1 仍在此范围之外；真实账号接口与原生 IDEA 完整交互的验收限制仍适用。
