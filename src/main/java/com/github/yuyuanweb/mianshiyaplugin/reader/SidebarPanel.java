@@ -7,6 +7,7 @@ import com.github.yuyuanweb.mianshiyaplugin.constant.CommonConstant;
 import com.github.yuyuanweb.mianshiyaplugin.constant.IconConstant;
 import com.github.yuyuanweb.mianshiyaplugin.reader.model.ReaderModels.*;
 import com.github.yuyuanweb.mianshiyaplugin.view.LoginPanel;
+import com.github.yuyuanweb.mianshiyaplugin.utils.ThemeUtil;
 import com.github.yuyuanweb.mianshiyaplugin.view.QuestionListManager;
 import com.intellij.icons.AllIcons;
 import com.intellij.ide.BrowserUtil;
@@ -22,7 +23,7 @@ import java.awt.*;
 import java.net.URI;
 import java.util.Objects;
 
-/** Sole ToolWindow content; detail navigation retains the active list instance. */
+/** A list or independent question tab; navigation preserves the shared list instance. */
 public final class SidebarPanel extends JPanel implements ReaderView, Disposable {
     private final Project project;
     private final ToolWindow window;
@@ -135,6 +136,9 @@ public final class SidebarPanel extends JPanel implements ReaderView, Disposable
             @Override public void update(@NotNull AnActionEvent e) { e.getPresentation().setEnabled(sourceUri != null); }
         });
         if (detail) more.add(action("answer.toggle", null, reader::toggleAnswer));
+        more.add(fontSizeAction());
+        more.add(action("settings", null, () -> com.intellij.openapi.options.ShowSettingsUtil.getInstance()
+                .showSettingsDialog(project, ReaderSettingsConfigurable.class)));
         more.addSeparator(); more.add(action("banks", null, controller::showBanks));
         more.add(action("questions", null, () -> controller.showQuestions(null))); more.addSeparator();
         more.add(action("dock.left", null, () -> window.setAnchor(ToolWindowAnchor.LEFT, null)));
@@ -148,6 +152,16 @@ public final class SidebarPanel extends JPanel implements ReaderView, Disposable
             }
         });
         actions.add(more); revalidate(); repaint();
+    }
+    private AnAction fontSizeAction() {
+        return new AnAction(ReaderMessages.text("font.size", ThemeUtil.readerFontSize())) {
+            @Override public void actionPerformed(@NotNull AnActionEvent e) {
+                ReaderFontSizePopup.show(SidebarPanel.this);
+            }
+            @Override public void update(@NotNull AnActionEvent e) {
+                e.getPresentation().setText(ReaderMessages.text("font.size", ThemeUtil.readerFontSize()));
+            }
+        };
     }
     private AnAction loginAction(boolean forceLogin) {
         return new ReaderLoginAction(IconConstant.LOGIN, () -> {

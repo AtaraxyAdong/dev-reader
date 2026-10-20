@@ -21,6 +21,7 @@ import java.util.function.Function;
 public final class SidebarController implements Disposable {
     private final QuestionRepository repository;
     private final ExecutorService executor;
+    private final boolean ownsExecutor;
     private final Consumer<Runnable> ui;
     private final Function<QuestionDocument, RenderedQuestion> render;
     private final AtomicLong requestGeneration = new AtomicLong();
@@ -35,11 +36,20 @@ public final class SidebarController implements Disposable {
     private Future<?> pendingNavigation;
     private AutoCloseable sessionSubscription;
     private boolean detailVisible;
+    private Consumer<QuestionSelection> questionOpener;
+    private Consumer<QuestionSelection> inTabNavigator = this::openInCurrentTab;
+    private Runnable selectView = () -> {};
+    private SidebarController listController;
+    private Consumer<String> titleChanged = title -> {};
 
-    public SidebarController(Project project) {
+    public SidebarController(Project project) { this(project, null); }
+
+    /** Each question owns its state and requests, while the project owns the shared worker pool. */
+    SidebarController(Project project, SidebarController owner) {
         this.project = project;
-        this.repository = new ApiQuestionRepository();
-        this.executor = AppExecutorUtil.createBoundedApplicationPoolExecutor("Mianshiya reader", 2);
+        this.repository = owner == null ? new ApiQuestionRepository() : owner.repository;
+        this.ownsExecutor = owner == null;
+        this.executor = owner == null ? AppExecutorUtil.createBoundedApplicationPoolExecutor("Mianshiya reader", 2) : owner.executor;
         this.ui = task -> ToolWindowManager.getInstance(project).invokeLater(() -> {
             if (!project.isDisposed() && !disposed) task.run();
         });
@@ -50,6 +60,7 @@ public final class SidebarController implements Disposable {
     SidebarController(QuestionRepository repository, ReaderView view, ExecutorService executor,
                              Consumer<Runnable> ui, Function<QuestionDocument, RenderedQuestion> render) {
         this.project = null;
+        this.ownsExecutor = true;
         this.repository = Objects.requireNonNull(repository);
         this.view = Objects.requireNonNull(view);
         this.executor = Objects.requireNonNull(executor);
@@ -59,6 +70,21 @@ public final class SidebarController implements Disposable {
 
     public static SidebarController getInstance(Project project) {
         return Objects.requireNonNull(project, "Project is required").getService(SidebarController.class);
+    }
+
+    public void configureTabs(Consumer<QuestionSelection> opener, Runnable selectView,
+                              SidebarController listController, Consumer<String> titleChanged) {
+        this.questionOpener = Objects.requireNonNull(opener);
+        this.selectView = Objects.requireNonNull(selectView);
+        this.listController = listController;
+        this.titleChanged = Objects.requireNonNull(titleChanged);
+    }
+
+    /** Used only for a newly created tab or an explicit retry; regular navigation goes through the tab host. */
+    public void openInCurrentTab(QuestionSelection selection) { withView(() -> openQuestion(selection)); }
+
+    public void setInTabNavigator(Consumer<QuestionSelection> navigate) {
+        this.inTabNavigator = Objects.requireNonNull(navigate);
     }
 
     public void attachView(ReaderView view) { this.view = Objects.requireNonNull(view); }
@@ -71,15 +97,20 @@ public final class SidebarController implements Disposable {
     }
 
     public void showBanks() {
-        withView(() -> { invalidate(); detailVisible = false; view.showBanks(); });
+        if (listController != null) { listController.showBanks(); return; }
+        withView(() -> { selectView.run(); invalidate(); detailVisible = false; view.showBanks(); });
     }
 
     public void showQuestions(Long bankId) {
-        withView(() -> { invalidate(); detailVisible = false; view.showQuestions(bankId); });
+        if (listController != null) { listController.showQuestions(bankId); return; }
+        withView(() -> { selectView.run(); invalidate(); detailVisible = false; view.showQuestions(bankId); });
     }
 
     public void showQuestion(QuestionSelection selection) {
-        withView(() -> openQuestion(selection));
+        withView(() -> {
+            if (questionOpener != null) questionOpener.accept(selection);
+            else openQuestion(selection);
+        });
     }
 
     private void openQuestion(QuestionSelection selection) {
@@ -107,6 +138,7 @@ public final class SidebarController implements Disposable {
                 if (response.getStatus() == LoadStatus.READY) {
                     titles.put(selection.getId(), response.getDocument().getTitle());
                     view.showDocument(document, positions.getOrDefault(selection.getId(), ReadingPosition.TOP));
+                    titleChanged.accept(response.getDocument().getTitle());
                 } else if (response.getStatus() != LoadStatus.CANCELLED) {
                     view.showFailure(response);
                 }
@@ -135,7 +167,8 @@ public final class SidebarController implements Disposable {
     }
 
     public void backToList() {
-        withView(() -> { invalidate(); detailVisible = false; view.restoreQuestionList(); });
+        if (listController != null) { listController.backToList(); return; }
+        withView(() -> { selectView.run(); invalidate(); detailVisible = false; view.restoreQuestionList(); });
     }
 
     public void previousQuestion() { move(-1); }
@@ -150,10 +183,10 @@ public final class SidebarController implements Disposable {
         if (current < 0 || next < 0 || next >= ids.size()) return;
         long id = ids.get(next);
         String title = titles.getOrDefault(id, ReaderMessages.text("question.number", id));
-        showQuestion(new QuestionSelection(id, title, new NavigationContext(navigation.getBankId(), ids, id, navigation.isBankOrderResolved())));
+        inTabNavigator.accept(new QuestionSelection(id, title, new NavigationContext(navigation.getBankId(), ids, id, navigation.isBankOrderResolved())));
     }
 
-    public void retry() { if (selected != null && detailVisible) showQuestion(selected); }
+    public void retry() { if (selected != null && detailVisible) openInCurrentTab(selected); }
 
     private void updateNavigation() {
         if (selected == null || (selected.getNavigation().getBankId() != null && !selected.getNavigation().isBankOrderResolved())) {
@@ -191,7 +224,7 @@ public final class SidebarController implements Disposable {
         if (disposed) return;
         disposed = true;
         invalidate();
-        executor.shutdownNow();
+        if (ownsExecutor) executor.shutdownNow();
         positions.clear();
         titles.clear();
         if (sessionSubscription != null) {

@@ -1,5 +1,9 @@
 # Reader API contract investigation
 
+> Later authenticated debugging confirmed this route returns metadata only even with a valid
+> plugin session. See [authenticated content repair](authenticated-reader-content-fix.md) for
+> the current website content source and live evidence. The investigation below is historical.
+
 Updated: 2026-10-20. Supersedes the initial candidate-parameter investigation in commit 3613099.
 
 ## Confirmed detail failure and contract correction

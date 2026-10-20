@@ -117,6 +117,78 @@ public class SidebarControllerTest {
         assertEquals(LoadStatus.NEEDS_LOGIN, view.failure.getStatus());
     }
 
+    @Test public void listOpeningAndInTabNavigationUseSeparateRoutes() {
+        List<Long> opened = new ArrayList<>();
+        controller.configureTabs(s -> opened.add(s.getId()), () -> {}, null, title -> {});
+        controller.showQuestion(selection(1, 1, 2));
+        assertEquals(Collections.singletonList(1L), opened);
+        assertTrue(background.queue.isEmpty());
+        controller.setInTabNavigator(s -> opened.add(s.getId()));
+        controller.openInCurrentTab(selection(1, 1, 2));
+        background.runAll(); drainUi();
+        controller.nextQuestion();
+        assertEquals(Arrays.asList(1L, 2L), opened);
+        assertEquals(Collections.singletonList(1L), view.shown);
+        assertTrue(background.queue.isEmpty());
+    }
+    @Test public void retryReloadsCurrentTabInsteadOfSelectingItAgain() {
+        List<Long> opened = new ArrayList<>();
+        List<String> titles = new ArrayList<>();
+        controller.configureTabs(s -> opened.add(s.getId()), () -> {}, null, titles::add);
+        repository.failLoad = true;
+        controller.openInCurrentTab(selection(1, 1));
+        background.runAll(); drainUi();
+        repository.failLoad = false;
+        controller.retry();
+        background.runAll(); drainUi();
+        assertTrue(opened.isEmpty());
+        assertEquals(Collections.singletonList(1L), view.shown);
+        assertEquals(Collections.singletonList("question 1"), titles);
+    }
+    @Test public void returningToListKeepsDetailLoadAndReadingPosition() {
+        FakeView listView = new FakeView();
+        int[] selected = {0};
+        SidebarController list = new SidebarController(repository, listView, new ManualExecutor(), ui::add,
+                doc -> new RenderedQuestion(doc.getId(), "", doc.getSourceUri()));
+        try {
+            list.configureTabs(s -> {}, () -> selected[0]++, null, title -> {});
+            controller.configureTabs(s -> {}, () -> {}, list, title -> {});
+            controller.openInCurrentTab(selection(1, 1));
+            controller.backToList();
+            background.runAll(); drainUi();
+            assertEquals(1, listView.restores);
+            assertEquals(1, selected[0]);
+            assertEquals(Collections.singletonList(1L), view.shown);
+            controller.savePosition(1, new ReadingPosition("answer-4", .6));
+            controller.retry();
+            background.runAll(); drainUi();
+            assertEquals("answer-4", view.position.getBlockId());
+        } finally { list.dispose(); }
+    }
+    @Test public void independentTabsDeliverLateResultsToTheirOwnViews() {
+        FakeView otherView = new FakeView();
+        ManualExecutor otherTasks = new ManualExecutor();
+        SidebarController other = new SidebarController(repository, otherView, otherTasks, ui::add,
+                doc -> new RenderedQuestion(doc.getId(), "", doc.getSourceUri()));
+        try {
+            controller.openInCurrentTab(selection(1, 1, 2));
+            other.openInCurrentTab(selection(2, 1, 2));
+            otherTasks.runAll(); background.runAll(); drainUi();
+            assertEquals(Collections.singletonList(1L), view.shown);
+            assertEquals(Collections.singletonList(2L), otherView.shown);
+            controller.dispose();
+            other.retry(); otherTasks.runAll(); drainUi();
+            assertEquals(Arrays.asList(2L, 2L), otherView.shown);
+        } finally { other.dispose(); }
+    }
+    @Test public void closingQuestionControllerDoesNotStopProjectWorkerPool() {
+        SidebarController child = new SidebarController(null, controller);
+        child.dispose();
+        assertFalse(background.isShutdown());
+        controller.showQuestion(selection(1, 1));
+        background.runAll(); drainUi();
+        assertEquals(Collections.singletonList(1L), view.shown);
+    }
     private void drainUi() { while (!ui.isEmpty()) ui.remove().run(); }
     private static QuestionSelection selection(long id, long... ids) {
         List<Long> snapshot = new ArrayList<>();

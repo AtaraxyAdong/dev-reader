@@ -13,6 +13,7 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 初始化请求工具
@@ -24,6 +25,7 @@ public class ApiConfig {
     public static MianShiYaApi mianShiYaApi;
     /** API client for background reader requests; it reuses the saved session without interactive prompts or URL logging. */
     public static MianShiYaApi readerMianShiYaApi;
+    public static OkHttpClient readerHttpClient;
 
     static {
         // 自定义 Gson 实例
@@ -36,8 +38,10 @@ public class ApiConfig {
                 .addInterceptor(new ResponseInterceptor())
                 .build();
         OkHttpClient readerClient = new OkHttpClient.Builder()
+                .callTimeout(15, TimeUnit.SECONDS)
                 .addInterceptor(new HeaderInterceptor())
                 .build();
+        readerHttpClient = readerClient;
         String mianShiYaBaseUrl = CommonConstant.API;
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(mianShiYaBaseUrl)

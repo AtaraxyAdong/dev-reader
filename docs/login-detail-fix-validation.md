@@ -1,5 +1,8 @@
 # Login presentation and question detail repair (0.5.7)
 
+> Historical validation for 0.5.7. Native desktop debugging is now available and has reproduced
+> the remaining metadata-only response. See [0.5.8 content repair](authenticated-reader-content-fix.md).
+
 Date: 2026-10-20. Repository: `E:\01-Java\mianshiya-plugin`.
 Branch: `codex/sidebar-markdown-reader`. Starting commit: f7b7240.
 

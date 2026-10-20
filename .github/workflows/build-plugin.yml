@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - codex/sidebar-markdown-reader
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -32,12 +33,33 @@ jobs:
       - name: Test, verify and build the plugin
         run: .\gradlew.bat --no-daemon check verifyPlugin buildPlugin --console=plain '-Dfile.encoding=UTF-8'
 
-      - name: Upload the installable plugin ZIP
+      - name: Validate the installable plugin ZIP
+        id: package
+        run: .\.github\scripts\verify-plugin-package.ps1
+
+      - name: Add installation instructions
+        env:
+          PACKAGE_FILE: ${{ steps.package.outputs.package_file }}
+        run: |
+          @"
+          安装步骤 / Installation
+          1. 先解压从 GitHub Actions 下载的外层 ZIP。
+          2. 打开 IDEA：Settings > Plugins > 齿轮 > Install Plugin from Disk。
+          3. 选择本目录的 $env:PACKAGE_FILE，不要选择外层下载包，也不要继续解压插件 ZIP。
+          4. 安装后按 IDEA 提示重启。
+
+          First extract the GitHub Actions artifact, then install the inner $env:PACKAGE_FILE.
+          The artifact download ZIP itself is not an IDEA plugin.
+          "@ | Set-Content -LiteralPath 'build/distributions/INSTALL.txt' -Encoding utf8
+
+      - name: Upload plugin ZIP and instructions (extract artifact first)
         id: plugin
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: Mianshiya-plugin-${{ github.sha }}
-          path: build/distributions/*.zip
+          name: Reading-plugin-UNZIP-FIRST-${{ github.sha }}
+          path: |
+            ${{ steps.package.outputs.plugin_zip }}
+            build/distributions/INSTALL.txt
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
@@ -45,11 +67,12 @@ jobs:
       - name: Write download and checksum summary
         env:
           ARTIFACT_URL: ${{ steps.plugin.outputs.artifact-url }}
+          PACKAGE_FILE: ${{ steps.package.outputs.package_file }}
+          PACKAGE_SHA256: ${{ steps.package.outputs.sha256 }}
         run: |
-          "## Plugin package" >> $env:GITHUB_STEP_SUMMARY
-          "[Download artifact]($env:ARTIFACT_URL)" >> $env:GITHUB_STEP_SUMMARY
-          "Extract the downloaded artifact and install the inner plugin ZIP in IDEA." >> $env:GITHUB_STEP_SUMMARY
-          Get-ChildItem -LiteralPath 'build/distributions' -Filter '*.zip' | ForEach-Object {
-            $checksum = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
-            "- $($_.Name): $($_.Length) bytes; SHA-256: $checksum" >> $env:GITHUB_STEP_SUMMARY
-          }
+          "## 下载与安装 / Download and install" >> $env:GITHUB_STEP_SUMMARY
+          "[下载构建产物 / Download artifact]($env:ARTIFACT_URL)" >> $env:GITHUB_STEP_SUMMARY
+          "**先解压下载的外层 ZIP，再在 IDEA 中从磁盘安装里面的 $env:PACKAGE_FILE。**" >> $env:GITHUB_STEP_SUMMARY
+          "不要直接导入 GitHub 下载的外层 ZIP；不要选择 Source code ZIP。" >> $env:GITHUB_STEP_SUMMARY
+          "- Installable file: $env:PACKAGE_FILE" >> $env:GITHUB_STEP_SUMMARY
+          "- SHA-256: $env:PACKAGE_SHA256" >> $env:GITHUB_STEP_SUMMARY

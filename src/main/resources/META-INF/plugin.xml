@@ -1,7 +1,7 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
     <id>com.github.yuyuanweb.mianshiyaplugin</id>
-    <name>Mianshiya</name>
+    <name>Reading</name>
     <vendor>yuyuanweb</vendor>
 
     <depends>com.intellij.modules.platform</depends>
@@ -59,10 +59,12 @@
     ]]></change-notes>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow canCloseContents="false" anchor="right"
+        <toolWindow canCloseContents="true" anchor="right"
                     icon="/icons/favicon.svg"
                     factoryClass="com.github.yuyuanweb.mianshiyaplugin.toolWindow.MyToolWindowFactory" id="面试鸭">
         </toolWindow>
+        <applicationConfigurable parentId="tools" id="mianshiya.reader.settings" displayName="阅读设置"
+                                 instance="com.github.yuyuanweb.mianshiyaplugin.reader.ReaderSettingsConfigurable"/>
         <applicationService serviceImplementation="com.github.yuyuanweb.mianshiyaplugin.config.GlobalState"/>
         <projectService serviceImplementation="com.github.yuyuanweb.mianshiyaplugin.reader.SidebarController"/>
 

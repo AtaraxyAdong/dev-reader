@@ -12,6 +12,15 @@
 - **多端同步**：支持 IDEA 及 JetBrains 系列其他产品，如 WebStorm、PyCharm 等。同时支持小程序和 Web 端，数据三端同步。
 - **开源**：插件完全开源，代码托管在 GitHub，欢迎贡献和 Star 支持。
 
+## 本分支的离线安装包
+
+在本仓库 Actions 中打开最新成功的 **Build plugin ZIP**，下载名为 `Reading-plugin-UNZIP-FIRST-...` 的构建产物。
+
+**先解压 GitHub 下载的外层 ZIP，再到 IDEA 的 Settings > Plugins > 齿轮 > Install Plugin from Disk，选择里面的 `Mianshiya-版本号.zip`。** 插件 ZIP 不要继续解压。外层下载包和 GitHub 的 Source code ZIP 都不能直接安装。
+
+下载包内附有 `INSTALL.txt`；构建摘要提供可安装文件名及 SHA-256。上传前会验证插件目录、JAR 内描述文件、插件 ID、版本和 IDEA 兼容范围。
+
+侧栏默认名称为“阅读”，可在 Settings > Tools > 阅读设置修改；插件管理列表中的名称为 Reading。
 ## 安装与使用
 
 1. 打开 IntelliJ IDEA，进入 `Settings` > `Plugins`。

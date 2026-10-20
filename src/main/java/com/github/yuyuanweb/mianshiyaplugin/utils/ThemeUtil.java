@@ -1,6 +1,7 @@
 package com.github.yuyuanweb.mianshiyaplugin.utils;
 
 import com.intellij.openapi.editor.colors.EditorColorsManager;
+import com.github.yuyuanweb.mianshiyaplugin.reader.ReaderAppearanceSettings;
 
 import java.awt.*;
 import java.util.LinkedHashMap;
@@ -27,8 +28,12 @@ public class ThemeUtil {
         values.put("--reader-code-bg", hex(blend(foreground, background, .045)));
         values.put("--reader-link", hex(isDarkColor(background) ? new Color(120, 170, 235) : new Color(55, 105, 175)));
         values.put("--reader-font", "'" + font.getFamily().replace("'", "").replace("\\", "") + "', sans-serif");
-        values.put("--reader-size", Math.max(12, font.getSize()) + "px");
+        values.put("--reader-size", readerFontSize() + "px");
         return values;
+    }
+
+    public static int readerFontSize() {
+        return ReaderAppearanceSettings.getInstance().fontSize(Math.max(12, UIUtil.getLabelFont().getSize()));
     }
 
     private static Color blend(Color first, Color second, double amount) {

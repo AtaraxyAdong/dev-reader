@@ -14,6 +14,7 @@ import com.github.yuyuanweb.mianshiyaplugin.reader.model.ReaderModels.QuestionDo
 import com.github.yuyuanweb.mianshiyaplugin.reader.model.ReaderModels.QuestionLoadResult;
 import com.github.yuyuanweb.mianshiyaplugin.reader.model.ReaderModels.SourceFormat;
 import com.google.gson.JsonParseException;
+import com.intellij.openapi.diagnostic.Logger;
 import com.google.gson.stream.MalformedJsonException;
 import java.io.EOFException;
 import retrofit2.Response;
@@ -33,12 +34,18 @@ public final class ApiQuestionRepository implements QuestionRepository {
     private static final int CODE_NO_VIP_AUTH = 40102;
     private static final int CODE_LOGIN_CONFLICT = 40110;
     private final MianShiYaApi api;
+    private final QuestionPageSource pages;
 
     public ApiQuestionRepository() {
-        this(ApiConfig.readerMianShiYaApi);
+        this(ApiConfig.readerMianShiYaApi, new QuestionPageSource(ApiConfig.readerHttpClient));
     }
 
     ApiQuestionRepository(MianShiYaApi api) {
+        this(api, null);
+    }
+
+    ApiQuestionRepository(MianShiYaApi api, QuestionPageSource pages) {
+        this.pages = pages;
         if (api == null) throw new IllegalArgumentException("api is required");
         this.api = api;
     }
@@ -65,10 +72,20 @@ public final class ApiQuestionRepository implements QuestionRepository {
             if (question == null || question.getId() == null || question.getId() != questionId) {
                 return QuestionLoadResult.failure(LoadStatus.NOT_FOUND, "题目不存在");
             }
+            if (pages != null && (question.getContent() == null || question.getBestQuestionAnswer() == null
+                    || question.getBestQuestionAnswer().getContent() == null)) {
+                return pages.load(questionId);
+            }
             return QuestionLoadResult.ready(toDocument(question, questionId));
         } catch (JsonParseException | IllegalStateException | MalformedJsonException | EOFException e) {
             return QuestionLoadResult.failure(LoadStatus.ERROR, "题目数据解析失败，请重试。");
         } catch (IOException e) {
+            if (Thread.currentThread().isInterrupted()) {
+                return QuestionLoadResult.failure(LoadStatus.CANCELLED, "");
+            }
+            Logger.getInstance(ApiQuestionRepository.class).warn(
+                    "Reader metadata transport failure: " + e.getClass().getSimpleName());
+            if (pages != null) return pages.load(questionId);
             return QuestionLoadResult.failure(LoadStatus.ERROR, "题目网络请求失败，请重试。");
         } catch (RuntimeException e) {
             return QuestionLoadResult.failure(LoadStatus.ERROR, "题目加载失败，请重试。");
@@ -103,7 +120,7 @@ public final class ApiQuestionRepository implements QuestionRepository {
                 body, referenceAnswer, sourceUri);
     }
 
-    private static ContentPart part(String content, Integer contentType, URI baseUri) {
+    static ContentPart part(String content, Integer contentType, URI baseUri) {
         if (content == null) return ContentPart.unavailable(baseUri);
         if (content.isEmpty()) return new ContentPart(PartStatus.EMPTY, SourceFormat.UNKNOWN, "", baseUri);
         SourceFormat format;

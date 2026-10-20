@@ -41,6 +41,24 @@
     const answer = document.getElementById('reference-answer');
     if (answer) answer.open = !answer.open;
   };
+  let imageReturnFocus = null;
+  function openImagePreview(value, alt, origin) {
+    let url;
+    try { url = new URL(value, location.href); } catch (_) { return; }
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return;
+    imageReturnFocus = origin;
+    send('image', { url: url.href, alt: alt || '' });
+  }
+  window.readerRestoreImageFocus = () => {
+    if (imageReturnFocus && imageReturnFocus.isConnected) imageReturnFocus.focus({ preventScroll: true });
+    imageReturnFocus = null;
+  };
+  document.addEventListener('keydown', event => {
+    const image = event.target.closest('#reader-content img');
+    if (image && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault(); openImagePreview(image.currentSrc || image.src, image.alt, image);
+    }
+  });
   window.readerStart = options => {
     if (options.token !== document.body.dataset.documentToken || (settings && settings.token === options.token)) return;
     settings = options;
@@ -49,7 +67,7 @@
       wrapper.className = 'table-scroll';
       table.before(wrapper); wrapper.appendChild(table);
     });
-    document.querySelectorAll('h1,h2,h3,h4,h5,h6,p,pre,table,ul,ol,blockquote,summary').forEach((block, i) => {
+    document.getElementById('reader-content').querySelectorAll('h1,h2,h3,h4,h5,h6,p,pre,table,ul,ol,blockquote,summary').forEach((block, i) => {
       const section = block.closest('[data-section]');
       block.id = (section ? section.dataset.section : 'document') + '-' + (block.id || 'block-' + i);
       block.setAttribute('data-reader-block', '');
@@ -59,7 +77,9 @@
       answer.open = options.answerExpanded !== false;
       answer.addEventListener('toggle', () => send('answer', { expanded: answer.open }));
     }
-    document.querySelectorAll('img').forEach(image => {
+    document.querySelectorAll('#reader-content img').forEach(image => {
+      image.tabIndex = 0; image.setAttribute('role', 'button');
+      image.setAttribute('aria-label', (image.alt ? image.alt + '，' : '') + '点击放大图片');
       image.addEventListener('load', restoreAfterReflow);
       const showFailure = () => {
         if (!image.isConnected) return;
@@ -83,6 +103,13 @@
     scrollTimer = setTimeout(() => send('position', anchor), 70);
   }, { passive: true });
   document.addEventListener('click', event => {
+    const image = event.target.closest('#reader-content img');
+    const failure = event.target.closest('#reader-content a.image-failure');
+    if (image || failure) {
+      event.preventDefault();
+      openImagePreview(image ? (image.currentSrc || image.src) : failure.href, image ? image.alt : '', image || failure);
+      return;
+    }
     const link = event.target.closest('a[href]');
     if (!link) return;
     event.preventDefault();

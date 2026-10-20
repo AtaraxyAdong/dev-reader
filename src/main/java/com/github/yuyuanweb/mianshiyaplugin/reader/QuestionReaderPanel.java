@@ -12,6 +12,7 @@ import com.intellij.openapi.editor.colors.EditorColorsManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.wm.ToolWindowManager;
+import com.intellij.openapi.wm.WindowManager;
 import com.intellij.ui.jcef.JBCefApp;
 import com.intellij.ui.jcef.JBCefBrowser;
 import com.intellij.ui.jcef.JBCefJSQuery;
@@ -53,11 +54,24 @@ public final class QuestionReaderPanel extends JPanel implements Disposable {
     private long questionId;
     private ReadingPosition position = ReadingPosition.TOP;
     private URI sourceUri;
+    private final ImagePreviewController imagePreviews;
 
     public QuestionReaderPanel(Project project, BiConsumer<Long, ReadingPosition> progress) {
         super();
         this.project = project;
         this.progress = progress;
+        imagePreviews = new ImagePreviewController((image, alt) -> {
+            Window owner = WindowManager.getInstance().getFrame(project);
+            if (owner == null) owner = SwingUtilities.getWindowAncestor(this);
+            String requestToken = token;
+            ImagePreviewDialog preview = new ImagePreviewDialog(project, owner, image, alt, () -> SwingUtilities.invokeLater(() -> {
+                if (!disposed && !project.isDisposed() && requestToken.equals(token))
+                    execute("if(window.readerRestoreImageFocus)window.readerRestoreImageFocus();");
+            }));
+            Disposer.register(this, preview.getDisposable());
+            return preview;
+        });
+        Disposer.register(this, imagePreviews);
         setLayout(cards);
         setMinimumSize(new Dimension(0, 0));
         fallback.setEditable(false);
@@ -69,15 +83,19 @@ public final class QuestionReaderPanel extends JPanel implements Disposable {
         MessageBusConnection connection = ApplicationManager.getApplication().getMessageBus().connect(this);
         connection.subscribe(LafManagerListener.TOPIC, manager -> refreshTheme());
         connection.subscribe(EditorColorsManager.TOPIC, scheme -> refreshTheme());
+        connection.subscribe(ReaderAppearanceSettings.CHANGED, this::refreshTheme);
     }
 
     public void showStatus(String text) {
+        imagePreviews.close();
         token = UUID.randomUUID().toString();
+        fallback.setFont(com.intellij.util.ui.UIUtil.getLabelFont().deriveFont((float) ThemeUtil.readerFontSize()));
         fallback.setText(text);
         cards.show(this, "status");
     }
 
     public void showDocument(RenderedQuestion document, ReadingPosition savedPosition) {
+        imagePreviews.close();
         questionId = document.getId();
         sourceUri = document.getSourceUri();
         position = savedPosition;
@@ -166,12 +184,13 @@ public final class QuestionReaderPanel extends JPanel implements Disposable {
             try {
                 if (data == null || !data.has("token") || !token.equals(data.get("token").getAsString())) return;
                 switch (data.get("kind").getAsString()) {
-                    case "ready": cards.show(this, "browser"); break;
+                    case "ready": cards.show(this, "browser"); refreshTheme(); break;
                     case "position":
                         position = new ReadingPosition(data.get("blockId").getAsString(), data.get("offsetRatio").getAsDouble());
                         progress.accept(questionId, position);
                         break;
                     case "answer": answerExpanded.put(questionId, data.get("expanded").getAsBoolean()); break;
+                    case "image": imagePreviews.open(data.get("url").getAsString(), data.has("alt") ? data.get("alt").getAsString() : ""); break;
                     case "link": openExternal(data.get("url").getAsString()); break;
                     default: break;
                 }
@@ -187,7 +206,10 @@ public final class QuestionReaderPanel extends JPanel implements Disposable {
     }
 
     private void refreshTheme() {
-        onUi(() -> execute("if (window.readerApplyTheme) window.readerApplyTheme(" + gson.toJson(ThemeUtil.readerVariables()) + ");"));
+        onUi(() -> {
+            fallback.setFont(com.intellij.util.ui.UIUtil.getLabelFont().deriveFont((float) ThemeUtil.readerFontSize()));
+            execute("if (window.readerApplyTheme) window.readerApplyTheme(" + gson.toJson(ThemeUtil.readerVariables()) + ");");
+        });
     }
 
     private void execute(String script) {
@@ -201,6 +223,7 @@ public final class QuestionReaderPanel extends JPanel implements Disposable {
     public void toggleAnswer() { execute("if (window.readerToggleAnswer) window.readerToggleAnswer();"); }
 
     public void clearSession() {
+        imagePreviews.close();
         token = UUID.randomUUID().toString();
         answerExpanded.clear();
         sourceUri = null;
@@ -220,5 +243,5 @@ public final class QuestionReaderPanel extends JPanel implements Disposable {
         } catch (IOException error) { throw new IllegalStateException("Cannot load reader resource", error); }
     }
 
-    @Override public void dispose() { disposed = true; token = ""; answerExpanded.clear(); }
+    @Override public void dispose() { disposed = true; imagePreviews.dispose(); token = ""; answerExpanded.clear(); }
 }

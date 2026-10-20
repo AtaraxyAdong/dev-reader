@@ -7,6 +7,8 @@ import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter;
 import com.vladsch.flexmark.html2md.converter.ExtensionConversion;
 import com.vladsch.flexmark.ast.InlineLinkNode;
 import com.vladsch.flexmark.ast.Reference;
+import com.vladsch.flexmark.ast.Heading;
+import com.vladsch.flexmark.ast.FencedCodeBlock;
 import com.vladsch.flexmark.parser.Parser;
 import com.vladsch.flexmark.util.sequence.BasedSequence;
 import com.vladsch.flexmark.util.data.MutableDataSet;
@@ -46,10 +48,24 @@ public final class ContentNormalizer {
         if (part.getFormat() == SourceFormat.MARKDOWN) return resolveMarkdownUrls(part.getContent(), part.getBaseUri());
         if (part.getFormat() != SourceFormat.HTML) throw new IllegalArgumentException("Unsupported content format: " + part.getFormat());
 
+        // Some website answers retain HTML metadata after being edited as Markdown.
+        // Detect actual top-level Markdown blocks before HTML conversion can flatten
+        // their whitespace and escape their syntax. HTML-wrapped text and code
+        // examples remain within their AST blocks instead of being searched as text.
+        if (hasMarkdownBlocks(part.getContent())) return resolveMarkdownUrls(part.getContent(), part.getBaseUri());
+
         Document document = Jsoup.parseBodyFragment(part.getContent(), part.getBaseUri().toString());
         document.outputSettings().prettyPrint(false);
         String safeHtml = sanitizeSource(document.body(), part.getBaseUri());
         return HTML_CONVERTER.convert(safeHtml).trim();
+    }
+
+    private static boolean hasMarkdownBlocks(String source) {
+        com.vladsch.flexmark.util.ast.Node document = MARKDOWN_PARSER.parse(source);
+        for (com.vladsch.flexmark.util.ast.Node block = document.getFirstChild(); block != null; block = block.getNext()) {
+            if (block instanceof Heading || block instanceof FencedCodeBlock) return true;
+        }
+        return false;
     }
 
     private static String sanitizeSource(Element root, URI baseUri) {

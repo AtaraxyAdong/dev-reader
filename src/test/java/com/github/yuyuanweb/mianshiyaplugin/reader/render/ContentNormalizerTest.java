@@ -90,6 +90,64 @@ public class ContentNormalizerTest {
         ContentNormalizer.toMarkdown(part(SourceFormat.UNKNOWN, "some payload"));
     }
 
+    @Test
+    public void rendersMarkdownMarkedAsHtmlWithoutFlatteningItsBlocks() {
+        String source = "## Answer\n\nA short introduction.\n\n"
+                + "<img src=\"https://example.test/diagram.png\" alt=\"diagram\"/>\n\n"
+                + "## Extension\n\n### Cursor paging\n\n"
+                + "1. **Unique** identifiers\n2. Stable ordering\n\n"
+                + "```sql\nSELECT * FROM messages\nWHERE id < :cursor\n```\n\n"
+                + "```json\n{\"nextCursor\": \"42\"}\n```\n";
+        Document document = renderHtmlMetadata(source);
+        assertEquals(2, document.select("h2").size());
+        assertEquals("Cursor paging", document.selectFirst("h3").text());
+        assertEquals(2, document.select("ol > li").size());
+        assertEquals("Unique", document.selectFirst("li strong").text());
+        assertEquals(1, document.select("img").size());
+        assertEquals(2, document.select("pre code").size());
+        assertTrue(document.selectFirst("code.language-sql").wholeText().contains("\nWHERE id < :cursor"));
+        assertEquals("{\"nextCursor\": \"42\"}\n", document.selectFirst("code.language-json").wholeText());
+    }
+
+    @Test
+    public void keepsHtmlParagraphsContainingLiteralMarkdownAsHtml() {
+        Document document = renderHtmlMetadata("<div><h2>HTML heading</h2><p>##literal heading</p>"
+                + "<p>**literal emphasis**</p><pre><code>## literal code heading</code></pre></div>");
+        assertEquals(1, document.select("h2").size());
+        assertEquals("##literal heading", document.select("p").get(0).text());
+        assertEquals("**literal emphasis**", document.select("p").get(1).text());
+        assertTrue(document.select("strong").isEmpty());
+        assertEquals("## literal code heading", document.selectFirst("pre code").text());
+    }
+
+    @Test
+    public void preservesHtmlExamplesInsideMislabelledMarkdownCode() {
+        String source = "```html\n<div><img src=\"../example.png\" onerror=\"demo()\"></div>\n```\n\n"
+                + "Inline `<script>demo()</script>` example.\n";
+        Document document = renderHtmlMetadata(source);
+        assertEquals("<div><img src=\"../example.png\" onerror=\"demo()\"></div>\n",
+                document.selectFirst("pre code.language-html").wholeText());
+        assertTrue(document.select("p code").text().contains("<script>demo()</script>"));
+        assertTrue(document.select("img, script, [onerror]").isEmpty());
+    }
+
+    @Test
+    public void sanitizesActiveHtmlInsideMislabelledMarkdown() {
+        Document document = renderHtmlMetadata("## Answer\n\n<script>stealCookies()</script>\n\n"
+                + "<img src=\"https://example.test/diagram.png\" onerror=\"bad()\" style=\"color:red\"/>\n\n"
+                + "[unsafe](javascript:alert) and **safe text**\n");
+        assertEquals(1, document.select("h2").size());
+        assertEquals(1, document.select("img").size());
+        assertTrue(document.select("script, [onerror], [style], a[href^=javascript]").isEmpty());
+        assertFalse(document.text().contains("stealCookies"));
+        assertEquals("safe text", document.selectFirst("strong").text());
+    }
+
+    private static Document renderHtmlMetadata(String source) {
+        return Jsoup.parseBodyFragment(MarkdownRenderer.renderFragment(
+                ContentNormalizer.toMarkdown(part(SourceFormat.HTML, source))));
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void rejectsUnavailableContent() {
         ContentNormalizer.toMarkdown(ContentPart.unavailable(BASE));
