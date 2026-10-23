@@ -94,6 +94,8 @@ class PublishSafetyTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
+        (self.root / ".github").mkdir()
+        (self.root / ".github/release-notes-template.md").write_text((SCRIPTS.parent / "release-notes-template.md").read_text())
         artifact = self.root / "release-artifact"
         artifact.mkdir()
         self.package = artifact / "dev-reader-0.1.0.zip"
@@ -108,6 +110,15 @@ class PublishSafetyTest(unittest.TestCase):
         self.policy = patch.object(publisher, "validate_repository", return_value=self.metadata)
         self.policy.start()
         self.addCleanup(self.policy.stop)
+
+    def test_public_notes_have_no_repeated_title_or_process_preamble(self):
+        body = publisher.render_notes(self.root, self.metadata, self.env)
+        self.assertTrue(body.startswith("## 功能\n"))
+        self.assertEqual(["## 功能", "## 修复", "## 安装", "## 已知限制"], [line for line in body.splitlines() if line.startswith("#")])
+        self.assertIn("dev-reader-0.1.0.zip", body)
+        self.assertIn("Actual account not tested", body.split("## 已知限制")[1])
+        self.assertNotIn("统一", body)
+        self.assertNotIn("版本重置", body)
 
     def test_ordinary_push_cannot_publish(self):
         self.env["GITHUB_REF"] = "refs/heads/master"

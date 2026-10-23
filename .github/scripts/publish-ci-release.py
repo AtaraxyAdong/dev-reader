@@ -7,6 +7,22 @@ import subprocess
 from version_policy import validate_repository
 
 
+def render_notes(root, metadata, env):
+    root = Path(root)
+    record = json.loads((root / "release-acceptance" / f"{metadata['version']}.json").read_text())
+    template = (root / ".github/release-notes-template.md").read_text()
+    body = template.format(
+        zip_name=metadata["zip_name"],
+        ci_url=f"https://github.com/{env['GITHUB_REPOSITORY']}/actions/runs/{env['GITHUB_RUN_ID']}",
+        acceptance_url=f"https://github.com/{env['GITHUB_REPOSITORY']}/blob/v{metadata['version']}/release-acceptance/{metadata['version']}.json",
+        known_limits="\n".join("- " + item for item in record.get("limitations", [])) or "- 关键验收记录已完成；使用前请核对 IDE 兼容范围。",
+    )
+    headings = [line for line in body.splitlines() if line.startswith("#")]
+    if headings != ["## 功能", "## 修复", "## 安装", "## 已知限制"]:
+        raise ValueError("Release body must use the four public-facing sections, without a repeated title")
+    return body
+
+
 def publish(root, env, run=subprocess.run):
     if env.get("GITHUB_EVENT_NAME") != "push" or not env.get("GITHUB_REF", "").startswith("refs/tags/v"):
         raise ValueError("Publication is allowed only for a pushed version tag")
@@ -28,16 +44,8 @@ def publish(root, env, run=subprocess.run):
         raise ValueError(f"Release already exists; inspect before retry: {existing.get('html_url', tag)}")
     if "HTTP 404" not in prior.stderr:
         raise RuntimeError(f"Release lookup failed; outcome requires investigation: {prior.stderr}")
-    run_id = env["GITHUB_RUN_ID"]
     notes = Path(root) / "release-notes-ci.md"
-    record = json.loads((Path(root) / "release-acceptance" / f"{metadata['version']}.json").read_text())
-    channel = "Early version; real critical acceptance is incomplete." if metadata["prerelease"] == "true" else "Critical acceptance is recorded; see the committed acceptance report."
-    limits = "\n".join("- " + item for item in record.get("limitations", []))
-    notes.write_text(f"{channel}\n\nInstall `{package.name}` through Settings > Plugins > Install Plugin from Disk.\n\n"
-                     f"CI build: https://github.com/{repository}/actions/runs/{run_id}\n"
-                     f"Commit: `{env['GITHUB_SHA']}`\nSHA-256: `{actual}`\n\n"
-                     f"Policy: https://github.com/{repository}/blob/{tag}/VERSIONING.md\n"
-                     f"Acceptance: https://github.com/{repository}/blob/{tag}/release-acceptance/{metadata['version']}.json\n\n{limits}\n")
+    notes.write_text(render_notes(root, metadata, env))
     command = ["gh", "release", "create", tag, str(package), str(checksum), "--repo", repository,
                "--verify-tag", "--title", f"dev-reader {metadata['version']}", "--notes-file", str(notes)]
     if metadata["prerelease"] == "true":

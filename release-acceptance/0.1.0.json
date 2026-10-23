@@ -5,16 +5,31 @@
   "environment": "macOS, isolated IDEA Community 252; Linux Actions runs JDK 17, IDEA verifier and Chromium",
   "tested_commit": "1b4be56d42c3c03bbc646e6aced90b4fbd1592ad",
   "checks": {
-    "install_startup": {"status": "partial", "evidence": "Native UI checks used the earlier QA plugin identity. Renamed identity and installable ZIP were checked in Gradle sandbox/CI. The 0.1.0 version-only rebuild is not a new full native installation acceptance."},
-    "real_account_content": {"status": "not_run", "evidence": "No real member credentials or paid-content acceptance. Anonymous bank/question lists and login-required state were exercised."},
-    "navigation_shortcuts": {"status": "partial", "evidence": "Native bank/question selection, Enter opening, return-to-list, A+ and More menu were exercised. Automated tests cover table activation/navigation; full user keymap acceptance was not performed."},
-    "markdown_images": {"status": "partial", "evidence": "Labeled local Markdown/code/table/image fixture and independent native image window exercised; browser regression covers nine image interactions. These do not replace real account-content validation."},
-    "settings_persistence": {"status": "partial", "evidence": "Font changes and More menu size were observed. Full restart/settings migration acceptance for the new 0.1.0 installation was not performed."}
+    "install_startup": {
+      "status": "partial",
+      "evidence": "Native UI checks used the earlier QA plugin identity. Renamed identity and installable ZIP were checked in Gradle sandbox/CI. The 0.1.0 version-only rebuild is not a new full native installation acceptance."
+    },
+    "real_account_content": {
+      "status": "not_run",
+      "evidence": "No real member credentials or paid-content acceptance. Anonymous bank/question lists and login-required state were exercised."
+    },
+    "navigation_shortcuts": {
+      "status": "partial",
+      "evidence": "Native bank/question selection, Enter opening, return-to-list, A+ and More menu were exercised. Automated tests cover table activation/navigation; full user keymap acceptance was not performed."
+    },
+    "markdown_images": {
+      "status": "partial",
+      "evidence": "Labeled local Markdown/code/table/image fixture and independent native image window exercised; browser regression covers nine image interactions. These do not replace real account-content validation."
+    },
+    "settings_persistence": {
+      "status": "partial",
+      "evidence": "Font changes and More menu size were observed. Full restart/settings migration acceptance for the new 0.1.0 installation was not performed."
+    }
   },
   "limitations": [
-    "Early 0.1.0 release: real member accounts and paid content are not accepted as verified.",
-    "Native UI evidence used a prior QA identity; new identity/package are checked automatically, not claimed as full real-install acceptance.",
-    "Declared IDEA range is 213–252; 2026.1/261 is excluded and JCEF is required.",
-    "New plugin ID io.github.ataraxyadong.devreader does not inherit old settings/login/keymap. User handles old-plugin uninstall. Avoid simultaneous use with integrated reader containing identical Java services."
+    "真实会员账号和付费内容尚未完成验收。",
+    "原生界面验证使用此前的 QA 插件身份；新身份和安装包已完成自动校验，但尚未完成 0.1.0 的全流程实机安装验收。",
+    "兼容 IDEA 平台 213–252，暂不支持 2026.1（261）；运行环境需要 JCEF。",
+    "新 plugin ID 为 io.github.ataraxyadong.devreader，旧设置、登录状态和快捷键不会自动继承。旧插件需自行停用或卸载；请勿与含相同 Java 服务的整合阅读插件同时启用。"
   ]
 }
