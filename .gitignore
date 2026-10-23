@@ -52,3 +52,7 @@ build
 output/
 
 .worktrees/
+
+# Python CI policy tests
+__pycache__/
+*.pyc

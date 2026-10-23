@@ -50,6 +50,7 @@ intellij {
     }
 
     patchPluginXml {
+        version = project.pluginVersion
         sinceBuild = project.pluginSinceBuild
         untilBuild = project.pluginUntilBuild
     }

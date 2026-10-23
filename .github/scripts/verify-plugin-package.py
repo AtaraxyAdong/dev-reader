@@ -6,11 +6,14 @@ import hashlib
 import xml.etree.ElementTree as ET
 
 root = Path(__file__).resolve().parents[2]
-properties = dict(line.split('=', 1) for line in (root / 'gradle.properties').read_text().splitlines()
-                  if '=' in line and not line.lstrip().startswith('#'))
-properties = {k.strip(): v.strip() for k, v in properties.items()}
+from version_policy import properties as read_properties
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("--distribution-dir", type=Path)
+args = parser.parse_args()
+properties = read_properties(root)
 name, version = properties['pluginName'], properties['pluginVersion']
-package = root / 'build/distributions' / f'{name}-{version}.zip'
+package = (args.distribution_dir or root / 'build/distributions') / f'{name}-{version}.zip'
 with ZipFile(package) as archive:
     files = [n for n in archive.namelist() if not n.endswith('/')]
     assert files and all(n.startswith(name + '/') for n in files), 'Invalid plugin ZIP root'

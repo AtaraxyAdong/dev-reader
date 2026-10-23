@@ -1,0 +1,14 @@
+{
+  "version": "X.Y.Z",
+  "status": "pending",
+  "tester": "",
+  "environment": "",
+  "tested_commit": "full SHA of the actual tested code",
+  "checks": {
+    "install_startup": {"status": "pending", "evidence": ""},
+    "real_account_content": {"status": "pending", "evidence": ""},
+    "navigation_shortcuts": {"status": "pending", "evidence": ""},
+    "markdown_images": {"status": "pending", "evidence": ""},
+    "settings_persistence": {"status": "pending", "evidence": ""}
+  }
+}

@@ -22,6 +22,10 @@ Release 安装包必须来自成功的 [Build plugin ZIP Actions](https://github
 - 更多菜单保留登录、退出、字号设置、内容入口和停靠位置。快捷键可在 Keymap 中为“显示／隐藏阅读窗口”重新绑定。
 - 图片使用独立非模态窗口，按所在屏幕居中；可缩放和拖动，阅读窗口仍可操作。
 
+## 版本与发布
+
+后续版本、tag、安装包命名及发布检查清单遵循 [VERSIONING.md](VERSIONING.md)，agent 入口见 [AGENTS.md](AGENTS.md)。各插件统一从纯数字 `0.1.0` 起步，之后独立递增；不使用 rc/local/ui/日期后缀。版本只在 `gradle.properties` 维护，由 Gradle 注入插件描述文件。普通 push/PR 只验证，版本 tag 经 CI 成功后发布 CI 产物。当前为早期版本，真实账号验收限制见 [本版本记录](release-acceptance/0.1.0.json)。
+
 ## 构建与验证
 
 使用 JDK 17 与项目自带 Gradle wrapper：
@@ -36,7 +40,7 @@ Actions 在 Linux 执行 Java 测试、IDEA Community 2025.2.6.3 兼容性检查
 
 ## 限制
 
-插件声明支持 IDEA 平台 213–252，需要支持 JCEF 的 JetBrains Runtime。2026.1（261）不在当前兼容范围。真实登录、会员题目与网络响应依赖第三方服务；未完成账户验收的版本以 pre-release 发布。预览测试样本、用户凭据与截图不包含在 Release 安装包内。
+插件声明支持 IDEA 平台 213–252，需要支持 JCEF 的 JetBrains Runtime。2026.1（261）不在当前兼容范围。真实登录、会员题目与网络响应依赖第三方服务；未完成账户验收的早期版本在说明中明确限制，GitHub 标记为 prerelease，版本号仍为纯数字。预览测试样本、用户凭据与截图不包含在 Release 安装包内。
 
 ## 来源与许可证
 
