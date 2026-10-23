@@ -82,6 +82,7 @@ tasks.named('runPluginVerifier') {
 }
 
 // Preserve source attribution in every installable distribution.
-processResources {
-    from('LICENSE', 'NOTICE') { into 'META-INF' }
+jar {
+    from('LICENSE') { into 'META-INF' }
+    from('NOTICE') { into 'META-INF' }
 }
