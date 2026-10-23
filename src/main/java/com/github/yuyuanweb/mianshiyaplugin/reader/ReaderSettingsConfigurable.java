@@ -12,7 +12,7 @@ public final class ReaderSettingsConfigurable implements SearchableConfigurable 
     private JPanel panel;
     private JTextField nameField;
 
-    @Override public @NotNull String getId() { return "mianshiya.reader.settings"; }
+    @Override public @NotNull String getId() { return "io.github.ataraxyadong.devreader.settings"; }
     @Override public String getDisplayName() { return "阅读设置"; }
 
     @Override public JComponent createComponent() {

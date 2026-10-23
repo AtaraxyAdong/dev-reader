@@ -106,6 +106,13 @@ public class QuestionListManager {
         return panel;
     }
 
+    /** Explicit refresh keeps the current query and page. */
+    public void refresh() {
+        if (disposed || project == null || project.isDisposed()) return;
+        if (tableModel == null) loadDataPanel();
+        else searchAndLoadData(questionQueryRequest);
+    }
+
     /** Invalidates callbacks when this retained list is discarded or its project closes. */
     public void dispose() {
         disposed = true;
@@ -398,7 +405,7 @@ public class QuestionListManager {
                 }
 
                 // 创建表格
-                JBTable table = PanelUtil.createTablePanel(tableModel, (tempTable, mouseEvent) -> {
+                JBTable table = PanelUtil.createTablePanel(tableModel, tempTable -> {
                     int selectedRow = tempTable.getSelectedRow();
                     if (selectedRow < 0 || onQuestionOpen == null || disposed || project == null || project.isDisposed()) return;
                     Long questionId = Long.valueOf((String) tempTable.getValueAt(selectedRow, 0));

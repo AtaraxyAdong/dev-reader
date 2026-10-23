@@ -7,26 +7,26 @@ package com.github.yuyuanweb.mianshiyaplugin.constant;
  */
 public interface ViewConstant {
 
-    String CONVERGE_PREVIEW = "ConvergePreview";
+    String CONVERGE_PREVIEW = "dev-reader.ConvergePreview";
 
-    String QUESTION_ANSWER_PREVIEW = "QuestionAnswerPreview";
+    String QUESTION_ANSWER_PREVIEW = "dev-reader.QuestionAnswerPreview";
 
-    String SPLITTER = "Splitter";
+    String SPLITTER = "dev-reader.Splitter";
 
-    String SPLIT_FILE_EDITOR = "SplitFileEditor";
+    String SPLIT_FILE_EDITOR = "dev-reader.SplitFileEditor";
 
-    String PARENT_SPLIT_KEY = "parentSplit";
+    String PARENT_SPLIT_KEY = "dev-reader.parentSplit";
 
-    String BEST_QUESTION_ANSWER_PROVIDER = "BestQuestionAnswerProvider";
+    String BEST_QUESTION_ANSWER_PROVIDER = "dev-reader.BestQuestionAnswerProvider";
 
-    String COMMON_PROVIDER = "CommonProvider";
+    String COMMON_PROVIDER = "dev-reader.CommonProvider";
 
-    String COMMON_PREVIEW = "CommonPreview";
+    String COMMON_PREVIEW = "dev-reader.CommonPreview";
 
-    String PARENT_SPLIT_EDITOR = "ParentSplitEditor";
+    String PARENT_SPLIT_EDITOR = "dev-reader.ParentSplitEditor";
 
-    String BEST_QUESTION_ANSWER_PREVIEW = "BestQuestionAnswerPreview";
+    String BEST_QUESTION_ANSWER_PREVIEW = "dev-reader.BestQuestionAnswerPreview";
 
-    String QUESTION_ANSWER_PROVIDER = "QuestionAnswerProvider";
+    String QUESTION_ANSWER_PROVIDER = "dev-reader.QuestionAnswerProvider";
 
 }

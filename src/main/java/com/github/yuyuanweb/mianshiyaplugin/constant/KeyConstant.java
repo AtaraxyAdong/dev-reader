@@ -43,12 +43,12 @@ public interface KeyConstant {
     String VIP_ZH = "会员";
     String VIP = "VIP";
 
-    String PLUGIN_NAME = "面试鸭";
+    String PLUGIN_NAME = "dev-reader";
 
     String ACTION_BAR = "ToolWindowToolbar";
 
-    String EDITOR_FILE_POSTFIX = "msy";
+    String EDITOR_FILE_POSTFIX = "devreader";
 
-    String EDITOR_FILE_POSTFIX_CONTENT = "msyc";
+    String EDITOR_FILE_POSTFIX_CONTENT = "devreaderc";
 
 }

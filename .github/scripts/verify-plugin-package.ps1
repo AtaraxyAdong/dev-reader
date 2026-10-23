@@ -45,7 +45,7 @@ try {
     }
     if ($descriptors.Count -ne 1) { throw 'Expected one plugin descriptor inside lib/*.jar.' }
     $metadata = $descriptors[0].'idea-plugin'
-    if ([string]$metadata.id -ne 'com.github.yuyuanweb.mianshiyaplugin') { throw 'Unexpected plugin ID.' }
+    if ([string]$metadata.id -ne 'io.github.ataraxyadong.devreader') { throw 'Unexpected plugin ID.' }
     if ([string]$metadata.version -ne $version) { throw 'Plugin descriptor version does not match gradle.properties.' }
     if ([string]$metadata.'idea-version'.'since-build' -ne (Read-Property 'pluginSinceBuild') -or
         [string]$metadata.'idea-version'.'until-build' -ne (Read-Property 'pluginUntilBuild')) {

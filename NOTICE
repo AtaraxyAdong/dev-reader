@@ -1,0 +1,10 @@
+dev-reader
+
+This project is derived from yuyuanweb/mianshiya-plugin.
+Original project: https://github.com/yuyuanweb/mianshiya-plugin
+Original author attribution (including yuyuanweb and pine) is retained in source files.
+The original Apache License 2.0 is retained in LICENSE.
+
+The dev-reader fork adds sidebar reading UI alignment and a distinct plugin identity.
+Mianshiya is the third-party data service; dev-reader is not its official distribution.
+Third-party dependency licenses and notices remain with their respective libraries.

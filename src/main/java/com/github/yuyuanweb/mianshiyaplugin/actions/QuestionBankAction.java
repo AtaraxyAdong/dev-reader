@@ -85,6 +85,11 @@ public class QuestionBankAction extends AnAction {
         return panel;
     }
 
+    /** Explicit refresh keeps the current query and page. */
+    public void refresh() {
+        if (!disposed && project != null && !project.isDisposed()) searchAndLoadData(queryRequest);
+    }
+
     /** Invalidates every pending callback and releases references to this panel's project. */
     public void dispose() {
         disposed = true;
@@ -275,7 +280,7 @@ public class QuestionBankAction extends AnAction {
                     tableModel.addRow(new Object[]{row.getId().toString(), row.getTitle(), row.getTagList()});
                 }
 
-                JBTable table = PanelUtil.createTablePanel(tableModel, (tempTable, mouseEvent) -> {
+                JBTable table = PanelUtil.createTablePanel(tableModel, tempTable -> {
                     int selectedRow = tempTable.getSelectedRow();
                     if (selectedRow != -1 && isCurrentPanel(lifecycleGeneration) && onBankOpen != null) {
                         // 获取选中行的数据

@@ -88,20 +88,12 @@ public class PanelUtil {
         return tabLabel;
     }
 
-    public static JBTable createTablePanel(MTabModel tableModel, BiConsumer<JBTable, MouseEvent> consumer, int columnIndex) {
+    public static JBTable createTablePanel(MTabModel tableModel, java.util.function.Consumer<JBTable> consumer, int columnIndex) {
         // 创建表格
         JBTable table = new JBTable(tableModel);
         table.setFillsViewportHeight(true);
 
-        // 鼠标双击事件监听
-        table.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent mouseEvent) {
-                if (mouseEvent.getClickCount() == 2) {
-                    consumer.accept(table, mouseEvent);
-                }
-            }
-        });
+        com.github.yuyuanweb.mianshiyaplugin.reader.TableActivation.install(table, () -> consumer.accept(table));
 
         // 自定义单元格渲染器
         TableCellRenderer categoryRenderer = new DefaultTableCellRenderer() {

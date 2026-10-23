@@ -30,7 +30,7 @@ public final class SidebarPanel extends JPanel implements ReaderView, Disposable
     private final SidebarController controller;
     private final CardLayout cards = new CardLayout();
     private final JPanel pages = new JPanel(cards);
-    private final DefaultActionGroup actions = new DefaultActionGroup();
+    private final QuietToolbar toolbar;
     private final QuestionReaderPanel reader;
     private QuestionBankAction bankBrowser;
     private QuestionListManager questionBrowser;
@@ -39,6 +39,7 @@ public final class SidebarPanel extends JPanel implements ReaderView, Disposable
     private Long bankId;
     private URI sourceUri;
     private boolean detail, previous, next;
+    private boolean bankList = true;
     private LoadStatus failureStatus;
 
     public SidebarPanel(Project project, ToolWindow window, SidebarController controller) {
@@ -48,10 +49,12 @@ public final class SidebarPanel extends JPanel implements ReaderView, Disposable
         reader = new QuestionReaderPanel(project, controller::savePosition);
         Disposer.register(this, reader);
         pages.add(reader, "QUESTION_DETAIL");
-        ActionToolbar toolbar = ActionManager.getInstance().createActionToolbar("MianshiyaReader", actions, true);
-        toolbar.setTargetComponent(this);
-        toolbar.setLayoutPolicy(ActionToolbar.AUTO_LAYOUT_POLICY);
-        add(toolbar.getComponent(), BorderLayout.NORTH); add(pages, BorderLayout.CENTER);
+        toolbar = new QuietToolbar(() -> { if (detail) controller.backToList(); else controller.showBanks(); },
+                controller::previousQuestion, controller::nextQuestion, this::refresh,
+                () -> changeFont(-1), () -> changeFont(1), this::showMore);
+        add(toolbar, BorderLayout.NORTH); add(pages, BorderLayout.CENTER);
+        com.intellij.openapi.application.ApplicationManager.getApplication().getMessageBus()
+                .connect(this).subscribe(ReaderAppearanceSettings.CHANGED, this::rebuildActions);
         rebuildActions();
     }
     @Override public void showBanks() {
@@ -60,7 +63,7 @@ public final class SidebarPanel extends JPanel implements ReaderView, Disposable
             bankPanel = bankBrowser.createPanel(project, controller::showQuestions);
             pages.add(bankPanel, "BANK_LIST");
         }
-        detail = false; cards.show(pages, "BANK_LIST"); rebuildActions();
+        detail = false; bankList = true; cards.show(pages, "BANK_LIST"); rebuildActions();
     }
     @Override public void showQuestions(Long selectedBank) {
         if (questionPanel == null || !Objects.equals(bankId, selectedBank)) {
@@ -71,11 +74,11 @@ public final class SidebarPanel extends JPanel implements ReaderView, Disposable
             questionPanel = questionBrowser.createPanel(bankId, project, controller::showQuestion);
             pages.add(questionPanel, "QUESTION_LIST");
         }
-        detail = false; cards.show(pages, "QUESTION_LIST"); rebuildActions();
+        detail = false; bankList = false; cards.show(pages, "QUESTION_LIST"); rebuildActions();
     }
     @Override public void restoreQuestionList() {
         if (questionPanel == null) { showBanks(); return; }
-        detail = false; cards.show(pages, "QUESTION_LIST"); rebuildActions();
+        detail = false; bankList = false; cards.show(pages, "QUESTION_LIST"); rebuildActions();
     }
     @Override public void showLoading(QuestionSelection selection) {
         detail = true; failureStatus = null;
@@ -111,26 +114,23 @@ public final class SidebarPanel extends JPanel implements ReaderView, Disposable
         reader.clearSession(); showBanks();
     }
     private void rebuildActions() {
-        actions.removeAll();
-        if (detail) {
-            actions.add(action("back", AllIcons.Actions.Back, controller::backToList));
-            actions.add(new AnAction(ReaderMessages.text("previous"), null, AllIcons.Actions.Back) {
-                @Override public void actionPerformed(@NotNull AnActionEvent e) { controller.previousQuestion(); }
-                @Override public void update(@NotNull AnActionEvent e) { e.getPresentation().setEnabled(previous); }
-            });
-            actions.add(new AnAction(ReaderMessages.text("next"), null, AllIcons.Actions.Forward) {
-                @Override public void actionPerformed(@NotNull AnActionEvent e) { controller.nextQuestion(); }
-                @Override public void update(@NotNull AnActionEvent e) { e.getPresentation().setEnabled(next); }
-            });
-            if (failureStatus != null) actions.add(action("retry", AllIcons.Actions.Refresh, controller::retry));
-            if (failureStatus == LoadStatus.NEEDS_LOGIN) actions.add(loginAction(true));
-        } else {
-            actions.add(action("banks", AllIcons.Scope.ChangedFilesAll, controller::showBanks));
-            actions.add(action("questions", AllIcons.Scope.ChangedFiles, () -> controller.showQuestions(null)));
-            actions.add(loginAction(false));
-        }
+        int size = ThemeUtil.readerFontSize();
+        toolbar.update(detail || !bankList, detail && previous, detail && next,
+                size > ReaderAppearanceSettings.MIN_FONT_SIZE, size < ReaderAppearanceSettings.MAX_FONT_SIZE,
+                ReaderMessages.text(detail ? "back" : "banks"));
+    }
+    private void changeFont(int delta) {
+        ReaderAppearanceSettings.getInstance().setFontSize(Math.max(ReaderAppearanceSettings.MIN_FONT_SIZE,
+                Math.min(ReaderAppearanceSettings.MAX_FONT_SIZE, ThemeUtil.readerFontSize() + delta)));
+    }
+    private void refresh() {
+        if (detail) controller.retry();
+        else if (bankList && bankBrowser != null) bankBrowser.refresh();
+        else if (questionBrowser != null) questionBrowser.refresh();
+    }
+    private void showMore() {
         DefaultActionGroup more = new DefaultActionGroup(ReaderMessages.text("more"), true);
-        more.getTemplatePresentation().setIcon(AllIcons.General.GearPlain);
+        more.getTemplatePresentation().setIcon(AllIcons.Actions.MoreHorizontal);
         more.add(new AnAction(ReaderMessages.text("original")) {
             @Override public void actionPerformed(@NotNull AnActionEvent e) { if (sourceUri != null) BrowserUtil.browse(sourceUri.toString()); }
             @Override public void update(@NotNull AnActionEvent e) { e.getPresentation().setEnabled(sourceUri != null); }
@@ -151,7 +151,11 @@ public final class SidebarPanel extends JPanel implements ReaderView, Disposable
                 e.getPresentation().setEnabled(cookie != null && !cookie.isEmpty());
             }
         });
-        actions.add(more); revalidate(); repaint();
+        com.intellij.openapi.ui.popup.JBPopupFactory.getInstance().createActionGroupPopup(
+                ReaderMessages.text("more"), more,
+                com.intellij.ide.DataManager.getInstance().getDataContext(this),
+                com.intellij.openapi.ui.popup.JBPopupFactory.ActionSelectionAid.SPEEDSEARCH, true)
+                .showUnderneathOf(toolbar.moreButton());
     }
     private AnAction fontSizeAction() {
         return new AnAction(ReaderMessages.text("font.size", ThemeUtil.readerFontSize())) {

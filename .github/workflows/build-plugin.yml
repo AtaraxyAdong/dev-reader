@@ -4,75 +4,58 @@ on:
   push:
     branches:
       - codex/sidebar-markdown-reader
+      - codex/mianshiya-quiet-ui
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: plugin-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
-    name: Test and package with JDK 17
-    runs-on: windows-latest
+    name: Test, verify and package
+    runs-on: ubuntu-latest
     timeout-minutes: 30
-    defaults:
-      run:
-        shell: pwsh
     steps:
-      - name: Check out the pushed commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: '17'
           cache: gradle
-
-      - name: Test, verify and build the plugin
-        run: .\gradlew.bat --no-daemon check verifyPlugin buildPlugin --console=plain '-Dfile.encoding=UTF-8'
-
-      - name: Validate the installable plugin ZIP
-        id: package
-        run: .\.github\scripts\verify-plugin-package.ps1
-
-      - name: Add installation instructions
-        env:
-          PACKAGE_FILE: ${{ steps.package.outputs.package_file }}
+      - name: Java tests and installable plugin
+        run: ./gradlew --no-daemon check verifyPlugin buildPlugin --console=plain -Dfile.encoding=UTF-8
+      - name: Verify compatibility with IDEA Community 2025.2.6.3
+        run: ./gradlew --no-daemon runPluginVerifier --console=plain
+      - name: Browser image regressions
         run: |
-          @"
-          安装步骤 / Installation
-          1. 先解压从 GitHub Actions 下载的外层 ZIP。
-          2. 打开 IDEA：Settings > Plugins > 齿轮 > Install Plugin from Disk。
-          3. 选择本目录的 $env:PACKAGE_FILE，不要选择外层下载包，也不要继续解压插件 ZIP。
-          4. 安装后按 IDEA 提示重启。
-
-          First extract the GitHub Actions artifact, then install the inner $env:PACKAGE_FILE.
-          The artifact download ZIP itself is not an IDEA plugin.
-          "@ | Set-Content -LiteralPath 'build/distributions/INSTALL.txt' -Encoding utf8
-
-      - name: Upload plugin ZIP and instructions (extract artifact first)
+          npm install --no-save --prefix .ci-browser playwright@1.58.2
+          .ci-browser/node_modules/.bin/playwright install --with-deps chromium
+          export NODE_PATH="$PWD/.ci-browser/node_modules"
+          export READER_TEST_BROWSER="$(node -e 'process.stdout.write(require("playwright").chromium.executablePath())')"
+          node --test src/test/js/reader-image-preview.test.cjs
+      - name: Validate ZIP metadata and checksum
+        run: python3 .github/scripts/verify-plugin-package.py
+      - name: Upload the installable ZIP
         id: plugin
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: Reading-plugin-UNZIP-FIRST-${{ github.sha }}
+          name: dev-reader-plugin-${{ github.sha }}
           path: |
-            ${{ steps.package.outputs.plugin_zip }}
-            build/distributions/INSTALL.txt
+            build/distributions/*.zip
+            build/distributions/SHA256SUMS.txt
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
           compression-level: 0
-
-      - name: Write download and checksum summary
+      - name: Build summary
         env:
           ARTIFACT_URL: ${{ steps.plugin.outputs.artifact-url }}
-          PACKAGE_FILE: ${{ steps.package.outputs.package_file }}
-          PACKAGE_SHA256: ${{ steps.package.outputs.sha256 }}
         run: |
-          "## 下载与安装 / Download and install" >> $env:GITHUB_STEP_SUMMARY
-          "[下载构建产物 / Download artifact]($env:ARTIFACT_URL)" >> $env:GITHUB_STEP_SUMMARY
-          "**先解压下载的外层 ZIP，再在 IDEA 中从磁盘安装里面的 $env:PACKAGE_FILE。**" >> $env:GITHUB_STEP_SUMMARY
-          "不要直接导入 GitHub 下载的外层 ZIP；不要选择 Source code ZIP。" >> $env:GITHUB_STEP_SUMMARY
-          "- Installable file: $env:PACKAGE_FILE" >> $env:GITHUB_STEP_SUMMARY
-          "- SHA-256: $env:PACKAGE_SHA256" >> $env:GITHUB_STEP_SUMMARY
+          echo "Install the inner dev-reader ZIP through Settings > Plugins > Install Plugin from Disk." >> "$GITHUB_STEP_SUMMARY"
+          echo "[CI artifact]($ARTIFACT_URL)" >> "$GITHUB_STEP_SUMMARY"
+          cat build/distributions/SHA256SUMS.txt >> "$GITHUB_STEP_SUMMARY"

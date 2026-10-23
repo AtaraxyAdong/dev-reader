@@ -1,53 +1,41 @@
-# 面试鸭 IDEA 插件
+# dev-reader
 
-**面试鸭** 是一个帮助程序员在 JetBrains 系列产品中刷面试题的插件。插件题目全面、题解优质、支持多种筛选条件，是一款摸鱼刷题必备神器。
+用于 JetBrains IDE 的侧栏阅读插件。当前通过面试鸭接口浏览题库与题目，以本地 Markdown 页面显示正文，提供紧凑阅读工具栏和独立图片窗口。
 
-## 特性
+本仓库是独立维护的衍生版本，并非面试鸭官方发行版。数据源、账号和内容权限仍由原服务提供；更名不会改变接口、解锁权限或提供离线题库。
 
-- **题目丰富**：拥有 20+ 题库分类，近 200 题库，6000+ 题目，涵盖了几乎所有主流编程方向的面试题。
-- **高质量题解**：许多题解来自大厂面试官原创，抓住核心要点，通俗易懂，配有图片辅助理解。
-- **快捷键支持**：支持自定义快捷键，轻松一键打开或收起插件。
-- **多条件筛选**：可通过题库、标签、难度等条件筛选，快速找到自己想要的题目。
-- **讨论互动**：题目详情页面分为题目、推荐答案、讨论区三个子 tab，方便交流讨论。
-- **多端同步**：支持 IDEA 及 JetBrains 系列其他产品，如 WebStorm、PyCharm 等。同时支持小程序和 Web 端，数据三端同步。
-- **开源**：插件完全开源，代码托管在 GitHub，欢迎贡献和 Star 支持。
+## 安装
 
-## 本分支的离线安装包
+从 [GitHub Releases](https://github.com/AtaraxyAdong/dev-reader/releases) 下载 `dev-reader-版本号.zip`，在 IDEA 的 **Settings > Plugins > 齿轮 > Install Plugin from Disk** 中选择该 ZIP。不要解压插件 ZIP，也不要安装 GitHub 的 Source code ZIP。
 
-在本仓库 Actions 中打开最新成功的 **Build plugin ZIP**，下载名为 `Reading-plugin-UNZIP-FIRST-...` 的构建产物。
+Release 安装包必须来自成功的 [Build plugin ZIP Actions](https://github.com/AtaraxyAdong/dev-reader/actions/workflows/build-plugin.yml)，附带 SHA-256 校验文件。若直接下载 Actions artifact，请先解压 GitHub 外层 ZIP，再选择其中的插件 ZIP。
 
-**先解压 GitHub 下载的外层 ZIP，再到 IDEA 的 Settings > Plugins > 齿轮 > Install Plugin from Disk，选择里面的 `Mianshiya-版本号.zip`。** 插件 ZIP 不要继续解压。外层下载包和 GitHub 的 Source code ZIP 都不能直接安装。
+插件显示名为 **dev-reader**，新 plugin ID 为 `io.github.ataraxyadong.devreader`。这是新插件安装，旧插件的登录状态、阅读设置和快捷键绑定不会自动继承。旧插件由用户自行停用或卸载；本项目不会删除旧配置。Java 包名和原作者署名保留以记录来源。
 
-下载包内附有 `INSTALL.txt`；构建摘要提供可安装文件名及 SHA-256。上传前会验证插件目录、JAR 内描述文件、插件 ID、版本和 IDEA 兼容范围。
+## 使用
 
-侧栏默认名称为“阅读”，可在 Settings > Tools > 阅读设置修改；插件管理列表中的名称为 Reading。
-## 安装与使用
+- 侧栏默认显示“阅读”，可在 **Settings > Tools > 阅读设置** 修改名称。
+- 题库和题目单击选中，双击或按 Enter 打开。
+- 单行工具栏提供返回列表、上一题、下一题、刷新、A−、A+ 和更多操作；不可用的操作显示为禁用。
+- 更多菜单保留登录、退出、字号设置、内容入口和停靠位置。快捷键可在 Keymap 中为“显示／隐藏阅读窗口”重新绑定。
+- 图片使用独立非模态窗口，按所在屏幕居中；可缩放和拖动，阅读窗口仍可操作。
 
-1. 打开 IntelliJ IDEA，进入 `Settings` > `Plugins`。
-2. 搜索 `mianshiya`，点击安装。
+## 构建与验证
 
-![install.gif](imgs/install.gif)
+使用 JDK 17 与项目自带 Gradle wrapper：
 
-搜索不到的小伙伴可以通过 JetBrains 插件市场下载，
-> JetBrains 插件市场地址：https://plugins.jetbrains.com/plugin/25258-mianshiya
+```sh
+./gradlew --no-daemon check verifyPlugin buildPlugin
+./gradlew --no-daemon runPluginVerifier
+python3 .github/scripts/verify-plugin-package.py
+```
 
-下载到本地之后按照下图步骤安装即可：
+Actions 在 Linux 执行 Java 测试、IDEA Community 2025.2.6.3 兼容性检查、Chromium 图片交互回归和 ZIP 身份校验。产物位于 `build/distributions/dev-reader-版本号.zip`。
 
-![img.png](imgs/img.png)
+## 限制
 
+插件声明支持 IDEA 平台 213–252，需要支持 JCEF 的 JetBrains Runtime。2026.1（261）不在当前兼容范围。真实登录、会员题目与网络响应依赖第三方服务；未完成账户验收的版本以 pre-release 发布。预览测试样本、用户凭据与截图不包含在 Release 安装包内。
 
-## 三端兼容
+## 来源与许可证
 
-- **JetBrains 系列产品**：支持 IDEA、WebStorm、PyCharm 等 2021.3 及以上版本。
-- **小程序端**：随时随地刷题。
-- **Web 端**：[面试鸭 Web 端](https://mianshiya.com)
-
-## 开源项目
-
-插件代码完全开源，欢迎大家 Star 和贡献代码！
-
-GitHub 地址：[https://github.com/yuyuanweb/mianshiya-plugin](https://github.com/yuyuanweb/mianshiya-plugin)
-
-## 反馈与支持
-
-如有问题或建议，欢迎通过 GitHub issue 提交反馈，或者直接联系我们。
+源自 [yuyuanweb/mianshiya-plugin](https://github.com/yuyuanweb/mianshiya-plugin)，保留原作者 yuyuanweb、pine 等署名以及 [Apache-2.0 LICENSE](LICENSE)。来源说明见 [NOTICE](NOTICE)。服务地址仍为 [mianshiya.com](https://www.mianshiya.com)。反馈请提交到 [本仓库 Issues](https://github.com/AtaraxyAdong/dev-reader/issues)。

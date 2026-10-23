@@ -26,7 +26,7 @@ public class FileUtils {
 
     public static String getTempDir() {
         String tmpDirPath = FileUtil.getTmpDirPath();
-        String suffix = "mianshiya/";
+        String suffix = "dev-reader/";
         return tmpDirPath.endsWith("/")
                 ? tmpDirPath + suffix
                 : tmpDirPath + "/" + suffix;

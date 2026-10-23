@@ -49,7 +49,7 @@ public final class SidebarController implements Disposable {
         this.project = project;
         this.repository = owner == null ? new ApiQuestionRepository() : owner.repository;
         this.ownsExecutor = owner == null;
-        this.executor = owner == null ? AppExecutorUtil.createBoundedApplicationPoolExecutor("Mianshiya reader", 2) : owner.executor;
+        this.executor = owner == null ? AppExecutorUtil.createBoundedApplicationPoolExecutor("dev-reader", 2) : owner.executor;
         this.ui = task -> ToolWindowManager.getInstance(project).invokeLater(() -> {
             if (!project.isDisposed() && !disposed) task.run();
         });

@@ -13,7 +13,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * @author pine
  */
-@State(name = "GlobalState", storages = {@Storage("mainshiya.xml")})
+@State(name = "DevReaderSession", storages = {@Storage("dev-reader-session.xml")})
 public class GlobalState implements PersistentStateComponent<GlobalState.State> {
 
     public static class State {

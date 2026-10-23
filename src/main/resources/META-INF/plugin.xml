@@ -1,7 +1,7 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
-    <id>com.github.yuyuanweb.mianshiyaplugin</id>
-    <name>Reading</name>
+    <id>io.github.ataraxyadong.devreader</id>
+    <name>dev-reader</name>
     <vendor>yuyuanweb</vendor>
 
     <depends>com.intellij.modules.platform</depends>
@@ -9,70 +9,34 @@
     <resource-bundle>messages.MyBundle</resource-bundle>
 
     <description><![CDATA[
-        <h2>Plugin Introduction</h2>
-        <p>This is a plug-in version of <a href="https://www.mianshiya.com">mianshiya</a> system, which provides a more convenient and flexible way to practice questions.</p>
-        <p><strong>面试鸭</strong> 是一个帮助程序员在 JetBrains 系列产品中刷面试题的插件。插件题目全面、题解优质、支持多种筛选条件，是一款摸鱼刷题必备神器。</p>
-
-        <h3>特性</h3>
-
-        <ul>
-          <li><strong>题目丰富</strong>：拥有 20+ 题库分类，近 200 题库，9000+ 题目，涵盖了几乎所有主流编程方向的面试题。</li>
-          <li><strong>高质量题解</strong>：许多题解来自大厂面试官原创，抓住核心要点，通俗易懂，配有图片辅助理解。</li>
-          <li><strong>快捷键支持</strong>：支持自定义快捷键，轻松一键打开或收起插件。</li>
-          <li><strong>多条件筛选</strong>：可通过题库、标签、难度等条件筛选，快速找到自己想要的题目。</li>
-          <li><strong>讨论互动</strong>：题目详情页面分为题目、推荐答案、讨论区三个子 tab，方便交流讨论。</li>
-          <li><strong>多端同步</strong>：支持 IDEA 及 JetBrains 系列其他产品，如 WebStorm、PyCharm 等。同时支持小程序和 Web 端，数据三端同步。</li>
-          <li><strong>开源</strong>：插件完全开源，代码托管在 GitHub，欢迎贡献和 Star 支持。</li>
-        </ul>
-
-        <h3>安装与使用</h3>
-
-        <ol>
-          <li>打开 IntelliJ IDEA，进入 <code>Settings</code> &gt; <code>Plugins</code>。</li>
-          <li>搜索 <code>mianshiya</code>，点击安装。</li>
-        </ol>
-
-        <h3>三端兼容</h3>
-
-        <ul>
-          <li><strong>JetBrains 系列产品</strong>：支持 IDEA、WebStorm、PyCharm 等 2021.3 及以上版本。</li>
-          <li><strong>小程序端</strong>：随时随地刷题。</li>
-          <li><strong>Web 端</strong>：<a href="https://mianshiya.com">面试鸭 Web 端</a></li>
-        </ul>
-
-        <h3>开源项目</h3>
-
-        <p>插件代码完全开源，欢迎大家 Star 和贡献代码！</p>
-
-        <p>GitHub 地址：<a href="https://github.com/yuyuanweb/mianshiya-plugin">https://github.com/yuyuanweb/mianshiya-plugin</a></p>
-
-        <h3>反馈与支持</h3>
-
-        <p>如有问题或建议，欢迎通过 GitHub issue 提交反馈，或者直接联系我们。</p>
+        <h2>dev-reader</h2>
+        <p>A compact JetBrains sidebar reader for programming interview questions, with local Markdown rendering, keyboard navigation and independent image windows.</p>
+        <p>单行阅读工具栏、A− / A+ 字号调整、题库与题目单击选中、双击或 Enter 打开。侧栏名称可在阅读设置中修改。</p>
+        <p>当前数据源仍为 <a href="https://www.mianshiya.com">面试鸭</a>；账户、内容权限与网络访问受该服务约束。本插件不是该服务的官方发行版。</p>
+        <p>从 <a href="https://github.com/AtaraxyAdong/dev-reader/releases">GitHub Releases</a> 下载 dev-reader ZIP，使用 Install Plugin from Disk 安装。</p>
+        <p>新插件 ID：io.github.ataraxyadong.devreader。旧插件配置、登录状态与快捷键绑定不会自动迁移。</p>
+        <p>Derived from <a href="https://github.com/yuyuanweb/mianshiya-plugin">yuyuanweb/mianshiya-plugin</a>. Original author attribution and Apache-2.0 license are retained.</p>
     ]]></description>
 
     <change-notes><![CDATA[
-        <h2>0.5.4</h2>
-        <h3>fix</h3>
-        <p>修复内嵌页面的登录问题</p>
-        <p>修复下一题功能的评论区未刷新问题</p>
+        <p>dev-reader 独立身份、紧凑工具栏、键盘打开列表项及 GitHub Actions 构建分发。</p>
     ]]></change-notes>
 
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow canCloseContents="true" anchor="right"
                     icon="/icons/favicon.svg"
-                    factoryClass="com.github.yuyuanweb.mianshiyaplugin.toolWindow.MyToolWindowFactory" id="面试鸭">
+                    factoryClass="com.github.yuyuanweb.mianshiyaplugin.toolWindow.MyToolWindowFactory" id="dev-reader">
         </toolWindow>
-        <applicationConfigurable parentId="tools" id="mianshiya.reader.settings" displayName="阅读设置"
+        <applicationConfigurable parentId="tools" id="io.github.ataraxyadong.devreader.settings" displayName="阅读设置"
                                  instance="com.github.yuyuanweb.mianshiyaplugin.reader.ReaderSettingsConfigurable"/>
         <applicationService serviceImplementation="com.github.yuyuanweb.mianshiyaplugin.config.GlobalState"/>
         <projectService serviceImplementation="com.github.yuyuanweb.mianshiyaplugin.reader.SidebarController"/>
 
         <fileEditorProvider implementation="com.github.yuyuanweb.mianshiyaplugin.file.provider.EditorProvider"/>
-        <fileType name="msyQUESTION" extensions="msy;" fileNames=".msy" language="msyQUESTION"
+        <fileType name="devreaderQUESTION" extensions="devreader;" fileNames=".devreader" language="devreaderQUESTION"
                   implementationClass="com.github.yuyuanweb.mianshiyaplugin.file.type.CommonFileType"
                   fieldName="INSTANCE"/>
-        <fileType name="msycQUESTION" extensions="msyc;" fileNames=".msyc" language="msycQUESTION"
+        <fileType name="devreadercQUESTION" extensions="devreaderc;" fileNames=".devreaderc" language="devreadercQUESTION"
                   implementationClass="com.github.yuyuanweb.mianshiyaplugin.file.type.MsycFileType"
                   fieldName="INSTANCE_C"/>
         <fileEditorProvider implementation="com.github.yuyuanweb.mianshiyaplugin.file.provider.CommonProvider"/>
@@ -82,8 +46,8 @@
     </extensions>
 
     <actions>
-        <action id="Mianshiya.ToggleReader" class="com.github.yuyuanweb.mianshiyaplugin.reader.ToggleReaderAction"
-                text="显示／隐藏阅读窗口" description="显示或隐藏面试鸭阅读工具窗口"/>
+        <action id="DevReader.ToggleReader" class="com.github.yuyuanweb.mianshiyaplugin.reader.ToggleReaderAction"
+                text="显示／隐藏阅读窗口" description="显示或隐藏dev-reader 阅读工具窗口"/>
     </actions>
 
     <applicationListeners>

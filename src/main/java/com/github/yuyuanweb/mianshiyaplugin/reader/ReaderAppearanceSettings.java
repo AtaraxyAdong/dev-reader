@@ -10,12 +10,12 @@ import org.jetbrains.annotations.NotNull;
 
 /** Application-wide reading preferences, separate from login state. */
 @Service
-@State(name = "MianshiyaReaderAppearance", storages = @Storage("mianshiya-reader.xml"))
+@State(name = "DevReaderAppearance", storages = @Storage("dev-reader-appearance.xml"))
 public final class ReaderAppearanceSettings implements PersistentStateComponent<ReaderAppearanceSettings.Settings> {
     public static final String DEFAULT_TOOL_WINDOW_NAME = "阅读";
     public static final int MIN_FONT_SIZE = 10;
     public static final int MAX_FONT_SIZE = 28;
-    public static final Topic<Runnable> CHANGED = Topic.create("Mianshiya reader appearance changed", Runnable.class);
+    public static final Topic<Runnable> CHANGED = Topic.create("dev-reader appearance changed", Runnable.class);
 
     public static final class Settings {
         public int fontSize = 0; // Zero follows the IDE font.

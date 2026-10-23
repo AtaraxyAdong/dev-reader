@@ -40,7 +40,7 @@ intellij {
     pluginName = project.pluginName
     version = project.platformVersion
     type = project.platformType
-    downloadSources = true
+    downloadSources = false
     updateSinceUntilBuild = false
     buildSearchableOptions.enabled = false
     ideaDependencyCachePath = "$gradle.gradleUserHomeDir/caches/modules-2/files-2.1/com.jetbrains.intellij.idea"
@@ -79,4 +79,9 @@ tasks.named('runPluginVerifier') {
     if (project.hasProperty('readerVerifierRuntime')) {
         runtimeDir.set(file(project.property('readerVerifierRuntime')).absolutePath)
     }
+}
+
+// Preserve source attribution in every installable distribution.
+processResources {
+    from('LICENSE', 'NOTICE') { into 'META-INF' }
 }

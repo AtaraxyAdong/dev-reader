@@ -4,3 +4,7 @@
 .qodana
 build
 .superpowers/
+
+.local/
+.ci-browser/
+output/
