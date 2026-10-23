@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src https: http:; style-src 'unsafe-inline'; script-src 'nonce-{{NONCE}}'; base-uri 'none'; form-action 'none'">
+<style>{{CSS}}</style>
+</head>
+<body>
+<dialog id="image-preview" aria-labelledby="image-preview-title">
+  <div class="image-preview-panel">
+    <header class="image-preview-toolbar">
+      <span id="image-preview-title">图片预览</span>
+      <button id="image-preview-close" type="button" aria-label="关闭图片预览">关闭 ×</button>
+      <div class="image-preview-controls" role="group" aria-label="图片缩放">
+        <button id="image-preview-out" type="button" aria-label="缩小图片">−</button>
+        <output id="image-preview-scale" aria-live="polite">—</output>
+        <button id="image-preview-in" type="button" aria-label="放大图片">＋</button>
+        <button id="image-preview-fit" type="button">适应窗口</button>
+        <button id="image-preview-actual" type="button">原尺寸</button>
+      </div>
+    </header>
+    <div id="image-preview-viewport" tabindex="0" aria-label="图片查看区域，可滚动查看原尺寸图片">
+      <div id="image-preview-canvas"><img id="image-preview-image" alt="" hidden></div>
+      <p id="image-preview-status" role="status"></p>
+    </div>
+  </div>
+</dialog>
+<script nonce="{{NONCE}}">{{JS}}</script>
+</body>
+</html>

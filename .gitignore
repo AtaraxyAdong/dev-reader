@@ -38,3 +38,17 @@ screenshot
 .eslintcache
 
 build
+
+# JetBrains plugin / isolated task outputs
+.gradle
+.idea
+.intellijPlatform
+.qodana
+build
+.superpowers/
+
+.local/
+.ci-browser/
+output/
+
+.worktrees/

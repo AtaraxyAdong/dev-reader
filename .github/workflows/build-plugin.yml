@@ -1,0 +1,63 @@
+name: Build plugin ZIP
+
+on:
+  push:
+    branches:
+      - master
+      - codex/dev-reader-master-integration
+      - codex/sidebar-markdown-reader
+      - codex/mianshiya-quiet-ui
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plugin-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Test, verify and package
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Java tests and installable plugin
+        run: ./gradlew --no-daemon check verifyPlugin buildPlugin --console=plain -Dfile.encoding=UTF-8
+      - name: Verify compatibility with IDEA Community 2025.2.6.3
+        run: ./gradlew --no-daemon runPluginVerifier --console=plain
+      - name: Browser image regressions
+        run: |
+          npm install --no-save --prefix .ci-browser playwright@1.58.2
+          .ci-browser/node_modules/.bin/playwright install --with-deps chromium
+          export NODE_PATH="$PWD/.ci-browser/node_modules"
+          export READER_TEST_BROWSER="$(node -e 'process.stdout.write(require("playwright").chromium.executablePath())')"
+          node --test src/test/js/reader-image-preview.test.cjs
+      - name: Validate ZIP metadata and checksum
+        run: python3 .github/scripts/verify-plugin-package.py
+      - name: Upload the installable ZIP
+        id: plugin
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dev-reader-plugin-${{ github.sha }}
+          path: |
+            build/distributions/*.zip
+            build/distributions/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+      - name: Build summary
+        env:
+          ARTIFACT_URL: ${{ steps.plugin.outputs.artifact-url }}
+        run: |
+          echo "Install the inner dev-reader ZIP through Settings > Plugins > Install Plugin from Disk." >> "$GITHUB_STEP_SUMMARY"
+          echo "[CI artifact]($ARTIFACT_URL)" >> "$GITHUB_STEP_SUMMARY"
+          cat build/distributions/SHA256SUMS.txt >> "$GITHUB_STEP_SUMMARY"

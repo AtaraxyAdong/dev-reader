@@ -1,0 +1,58 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <id>io.github.ataraxyadong.devreader</id>
+    <name>dev-reader</name>
+    <vendor>yuyuanweb</vendor>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <resource-bundle>messages.MyBundle</resource-bundle>
+
+    <description><![CDATA[
+        <h2>dev-reader</h2>
+        <p>A compact JetBrains sidebar reader for programming interview questions, with local Markdown rendering, keyboard navigation and independent image windows.</p>
+        <p>单行阅读工具栏、A− / A+ 字号调整、题库与题目单击选中、双击或 Enter 打开。侧栏名称可在阅读设置中修改。</p>
+        <p>当前数据源仍为 <a href="https://www.mianshiya.com">面试鸭</a>；账户、内容权限与网络访问受该服务约束。本插件不是该服务的官方发行版。</p>
+        <p>从 <a href="https://github.com/AtaraxyAdong/dev-reader/releases">GitHub Releases</a> 下载 dev-reader ZIP，使用 Install Plugin from Disk 安装。</p>
+        <p>新插件 ID：io.github.ataraxyadong.devreader。旧插件配置、登录状态与快捷键绑定不会自动迁移。</p>
+        <p>Derived from <a href="https://github.com/yuyuanweb/mianshiya-plugin">yuyuanweb/mianshiya-plugin</a>. Original author attribution and Apache-2.0 license are retained.</p>
+    ]]></description>
+
+    <change-notes><![CDATA[
+        <p>dev-reader 独立身份、紧凑工具栏、键盘打开列表项及 GitHub Actions 构建分发。</p>
+    ]]></change-notes>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow canCloseContents="true" anchor="right"
+                    icon="/icons/favicon.svg"
+                    factoryClass="com.github.yuyuanweb.mianshiyaplugin.toolWindow.MyToolWindowFactory" id="dev-reader">
+        </toolWindow>
+        <applicationConfigurable parentId="tools" id="io.github.ataraxyadong.devreader.settings" displayName="阅读设置"
+                                 instance="com.github.yuyuanweb.mianshiyaplugin.reader.ReaderSettingsConfigurable"/>
+        <applicationService serviceImplementation="com.github.yuyuanweb.mianshiyaplugin.config.GlobalState"/>
+        <projectService serviceImplementation="com.github.yuyuanweb.mianshiyaplugin.reader.SidebarController"/>
+
+        <fileEditorProvider implementation="com.github.yuyuanweb.mianshiyaplugin.file.provider.EditorProvider"/>
+        <fileType name="devreaderQUESTION" extensions="devreader;" fileNames=".devreader" language="devreaderQUESTION"
+                  implementationClass="com.github.yuyuanweb.mianshiyaplugin.file.type.CommonFileType"
+                  fieldName="INSTANCE"/>
+        <fileType name="devreadercQUESTION" extensions="devreaderc;" fileNames=".devreaderc" language="devreadercQUESTION"
+                  implementationClass="com.github.yuyuanweb.mianshiyaplugin.file.type.MsycFileType"
+                  fieldName="INSTANCE_C"/>
+        <fileEditorProvider implementation="com.github.yuyuanweb.mianshiyaplugin.file.provider.CommonProvider"/>
+        <editorTabTitleProvider
+                implementation="com.github.yuyuanweb.mianshiyaplugin.file.provider.CustomTabTitleProvider"
+                order="last"/>
+    </extensions>
+
+    <actions>
+        <action id="DevReader.ToggleReader" class="com.github.yuyuanweb.mianshiyaplugin.reader.ToggleReaderAction"
+                text="显示／隐藏阅读窗口" description="显示或隐藏dev-reader 阅读工具窗口"/>
+    </actions>
+
+    <applicationListeners>
+        <listener class="com.github.yuyuanweb.mianshiyaplugin.listeners.ApplicationLifecycleListener"
+                  topic="com.intellij.ide.AppLifecycleListener"/>
+    </applicationListeners>
+
+</idea-plugin>
